@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Paper-like off-white background */
+    --background: 40 30% 96%;
+    --foreground: 220 50% 15%;
+
+    /* Cards with subtle warmth */
+    --card: 40 25% 98%;
+    --card-foreground: 220 50% 15%;
+
+    --popover: 40 25% 98%;
+    --popover-foreground: 220 50% 15%;
+
+    /* Deep navy primary */
+    --primary: 220 50% 20%;
+    --primary-foreground: 40 30% 96%;
+
+    /* Muted grass green secondary */
+    --secondary: 140 25% 92%;
+    --secondary-foreground: 140 35% 25%;
+
+    --muted: 40 20% 92%;
+    --muted-foreground: 220 20% 45%;
+
+    /* Grass green accent */
+    --accent: 140 30% 88%;
+    --accent-foreground: 140 35% 25%;
+
+    /* Muted gold for highlights */
+    --gold: 45 55% 55%;
+    --gold-foreground: 45 70% 20%;
+
+    /* Field green for diamond */
+    --field: 140 35% 35%;
+    --field-light: 140 30% 45%;
+    --field-dark: 140 40% 25%;
+
+    /* Infield dirt */
+    --dirt: 30 30% 55%;
+    --dirt-light: 30 25% 65%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 220 50% 20%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar styling */
+    --sidebar-background: 220 50% 18%;
+    --sidebar-foreground: 40 20% 90%;
+    --sidebar-primary: 140 30% 45%;
+    --sidebar-primary-foreground: 40 30% 96%;
+    --sidebar-accent: 220 45% 25%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 220 40% 25%;
+    --sidebar-ring: 140 30% 45%;
+
+    /* Lyra panel */
+    --lyra: 220 45% 22%;
+    --lyra-foreground: 40 20% 92%;
+    --lyra-muted: 220 30% 35%;
+    --lyra-border: 220 35% 30%;
+  }
+
+  .dark {
+    --background: 220 50% 10%;
+    --foreground: 40 20% 92%;
+
+    --card: 220 45% 12%;
+    --card-foreground: 40 20% 92%;
+
+    --popover: 220 45% 12%;
+    --popover-foreground: 40 20% 92%;
+
+    --primary: 140 30% 45%;
+    --primary-foreground: 220 50% 10%;
+
+    --secondary: 220 40% 18%;
+    --secondary-foreground: 40 20% 85%;
+
+    --muted: 220 35% 18%;
+    --muted-foreground: 220 15% 60%;
+
+    --accent: 220 40% 20%;
+    --accent-foreground: 40 20% 90%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 35% 20%;
+    --input: 220 35% 20%;
+    --ring: 140 30% 45%;
+
+    --sidebar-background: 220 50% 8%;
+    --sidebar-foreground: 40 20% 90%;
+    --sidebar-primary: 140 30% 45%;
+    --sidebar-primary-foreground: 220 50% 10%;
+    --sidebar-accent: 220 45% 15%;
+    --sidebar-accent-foreground: 40 20% 90%;
+    --sidebar-border: 220 40% 15%;
+    --sidebar-ring: 140 30% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  /* Paper texture overlay */
+  .paper-texture {
+    background-image: 
+      radial-gradient(ellipse at 20% 30%, hsl(var(--gold) / 0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, hsl(var(--field) / 0.02) 0%, transparent 50%);
+  }
+}
+
+@layer utilities {
+  /* Subtle shadows for cards */
+  .shadow-card {
+    box-shadow: 
+      0 1px 3px hsl(var(--primary) / 0.06),
+      0 4px 12px hsl(var(--primary) / 0.04);
+  }
+
+  .shadow-card-hover {
+    box-shadow: 
+      0 2px 6px hsl(var(--primary) / 0.08),
+      0 8px 24px hsl(var(--primary) / 0.06);
+  }
+
+  /* Field diagram shadows */
+  .shadow-field {
+    box-shadow: inset 0 2px 8px hsl(var(--field-dark) / 0.3);
+  }
+
+  /* Lineup card styling */
+  .lineup-slot {
+    @apply relative border-b border-border/50 transition-colors duration-150;
+  }
+
+  .lineup-slot:hover {
+    @apply bg-accent/30;
+  }
+
+  .lineup-slot-empty {
+    @apply border-dashed border-muted-foreground/30;
+  }
+
+  /* Drag states */
+  .dragging {
+    @apply opacity-70 scale-105 shadow-card-hover;
+  }
+
+  .drag-over {
+    @apply bg-accent ring-2 ring-primary/20;
+  }
+
+  /* Position badges */
+  .position-badge {
+    @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded;
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  /* Status indicators */
+  .status-active {
+    @apply bg-field text-primary-foreground;
+  }
+
+  .status-inactive {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-archived {
+    @apply bg-muted/50 text-muted-foreground/70;
+  }
+
+  /* Gold accent elements */
+  .gold-accent {
+    @apply text-gold;
+  }
+
+  .gold-border {
+    @apply border-gold/40;
+  }
+}

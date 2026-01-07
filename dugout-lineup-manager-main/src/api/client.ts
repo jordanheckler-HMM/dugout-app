@@ -1,0 +1,441 @@
+/**
+ * API Client for Dugout Baseball Coaching Backend
+ * 
+ * Connects to the local FastAPI backend running at http://localhost:8000
+ * All operations are local-first with no authentication.
+ * 
+ * CHANGES: Created new file to handle all backend communication
+ */
+
+// Backend configuration
+const API_BASE = "http://localhost:8000";
+
+// Type definitions matching backend models
+export interface BackendPlayer {
+  id: string;
+  name: string;
+  number?: number;
+  primary_position: string;
+  secondary_positions?: string[];
+  bats: string;
+  throws: string;
+  status?: string;
+  notes?: string;
+}
+
+export interface BackendLineupSlot {
+  slot_number: number;
+  player_id: string | null;
+}
+
+export interface BackendFieldPosition {
+  position: string;
+  player_id: string | null;
+}
+
+export interface BackendConfiguration {
+  id: string;
+  name: string;
+  lineup: BackendLineupSlot[];
+  field_positions: BackendFieldPosition[];
+  notes?: string;
+  last_used_timestamp?: string;
+}
+
+export interface LyraAnalysisRequest {
+  lineup: BackendLineupSlot[];
+  field_positions: BackendFieldPosition[];
+  players: BackendPlayer[];
+  question?: string;
+}
+
+export interface LyraAnalysisResponse {
+  analysis: string;
+  timestamp: string;
+}
+
+export interface BackendGame {
+  id: string;
+  date: string;
+  opponent: string;
+  home_away: string;
+  result?: string;
+  score_us?: number;
+  score_them?: number;
+  notes?: string;
+  created_at?: string;
+}
+
+export interface BackendGameStats {
+  game_id: string;
+  player_id: string;
+  ab?: number;
+  r?: number;
+  h?: number;
+  doubles?: number;
+  triples?: number;
+  hr?: number;
+  rbi?: number;
+  bb?: number;
+  so?: number;
+  sb?: number;
+  cs?: number;
+  ip?: number;
+  h_allowed?: number;
+  r_allowed?: number;
+  er?: number;
+  bb_allowed?: number;
+  k?: number;
+  pitches?: number;
+  po?: number;
+  a?: number;
+  e?: number;
+  position_played?: string[];
+  innings_played?: number;
+}
+
+export interface BackendSeasonStats {
+  player_id: string;
+  games_played: number;
+  hitting: {
+    ab?: number;
+    r?: number;
+    h?: number;
+    doubles?: number;
+    triples?: number;
+    hr?: number;
+    rbi?: number;
+    bb?: number;
+    so?: number;
+    sb?: number;
+    cs?: number;
+    avg?: number;
+    obp?: number;
+    slg?: number;
+    ops?: number;
+  };
+  pitching: {
+    ip?: number;
+    h?: number;
+    r?: number;
+    er?: number;
+    bb?: number;
+    k?: number;
+    pitches?: number;
+    era?: number;
+    whip?: number;
+  };
+  fielding: {
+    po?: number;
+    a?: number;
+    e?: number;
+    fpct?: number;
+  };
+}
+
+// Helper for error handling
+class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+// Generic fetch wrapper with error handling
+async function fetchApi<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new ApiError(
+        response.status,
+        `API Error: ${response.status} - ${errorText}`
+      );
+    }
+
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    // Network or other errors
+    throw new Error(
+      `Failed to connect to backend at ${API_BASE}. Make sure the backend is running.`
+    );
+  }
+}
+
+// ==================== Player API ====================
+
+export const playersApi = {
+  /**
+   * Get all players from the backend
+   */
+  async getAll(): Promise<BackendPlayer[]> {
+    return fetchApi<BackendPlayer[]>('/players');
+  },
+
+  /**
+   * Create a new player
+   */
+  async create(player: Omit<BackendPlayer, 'id'>): Promise<BackendPlayer> {
+    return fetchApi<BackendPlayer>('/players', {
+      method: 'POST',
+      body: JSON.stringify(player),
+    });
+  },
+
+  /**
+   * Update an existing player
+   */
+  async update(
+    id: string,
+    updates: Partial<Omit<BackendPlayer, 'id'>>
+  ): Promise<BackendPlayer> {
+    return fetchApi<BackendPlayer>(`/players/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  /**
+   * Delete a player
+   */
+  async delete(id: string): Promise<void> {
+    return fetchApi<void>(`/players/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ==================== Lineup API ====================
+
+export const lineupApi = {
+  /**
+   * Get current lineup (9 slots)
+   */
+  async get(): Promise<BackendLineupSlot[]> {
+    return fetchApi<BackendLineupSlot[]>('/lineup');
+  },
+
+  /**
+   * Update the entire lineup
+   */
+  async update(lineup: BackendLineupSlot[]): Promise<BackendLineupSlot[]> {
+    return fetchApi<BackendLineupSlot[]>('/lineup', {
+      method: 'PUT',
+      body: JSON.stringify({ lineup }),
+    });
+  },
+};
+
+// ==================== Field API ====================
+
+export const fieldApi = {
+  /**
+   * Get current field positions
+   */
+  async get(): Promise<BackendFieldPosition[]> {
+    return fetchApi<BackendFieldPosition[]>('/field');
+  },
+
+  /**
+   * Update field positions
+   */
+  async update(
+    fieldPositions: BackendFieldPosition[]
+  ): Promise<BackendFieldPosition[]> {
+    return fetchApi<BackendFieldPosition[]>('/field', {
+      method: 'PUT',
+      body: JSON.stringify({ field_positions: fieldPositions }),
+    });
+  },
+};
+
+// ==================== Configuration API ====================
+
+export const configurationApi = {
+  /**
+   * Get all saved configurations
+   */
+  async getAll(): Promise<BackendConfiguration[]> {
+    return fetchApi<BackendConfiguration[]>('/configurations');
+  },
+
+  /**
+   * Get a specific configuration by ID
+   */
+  async getById(id: string): Promise<BackendConfiguration> {
+    return fetchApi<BackendConfiguration>(`/configurations/${id}`);
+  },
+
+  /**
+   * Save a new configuration
+   */
+  async create(config: {
+    name: string;
+    lineup: BackendLineupSlot[];
+    field_positions: BackendFieldPosition[];
+    notes?: string;
+  }): Promise<BackendConfiguration> {
+    return fetchApi<BackendConfiguration>('/configurations', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  },
+
+  /**
+   * Delete a configuration
+   */
+  async delete(id: string): Promise<void> {
+    return fetchApi<void>(`/configurations/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ==================== Lyra API ====================
+
+export const lyraApi = {
+  /**
+   * Get coaching perspective from Lyra
+   * Returns advisory text only - does not modify lineup/field
+   */
+  async analyze(
+    request: LyraAnalysisRequest
+  ): Promise<LyraAnalysisResponse> {
+    return fetchApi<LyraAnalysisResponse>('/lyra/analyze', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+};
+
+// ==================== Health Check ====================
+
+export const healthApi = {
+  /**
+   * Check backend and Ollama status
+   */
+  async check(): Promise<{
+    api: string;
+    ollama_connected: boolean;
+    ollama_models: string[];
+    lyra_model_available: boolean;
+  }> {
+    return fetchApi('/health');
+  },
+};
+
+// ==================== Games API ====================
+
+export const gamesApi = {
+  /**
+   * Get all games
+   */
+  async getAll(): Promise<BackendGame[]> {
+    return fetchApi<BackendGame[]>('/games');
+  },
+
+  /**
+   * Get a specific game by ID
+   */
+  async getById(id: string): Promise<BackendGame> {
+    return fetchApi<BackendGame>(`/games/${id}`);
+  },
+
+  /**
+   * Create a new game
+   */
+  async create(game: {
+    date: string;
+    opponent: string;
+    home_away?: string;
+    result?: string;
+    score_us?: number;
+    score_them?: number;
+    notes?: string;
+  }): Promise<BackendGame> {
+    return fetchApi<BackendGame>('/games', {
+      method: 'POST',
+      body: JSON.stringify(game),
+    });
+  },
+
+  /**
+   * Update a game
+   */
+  async update(
+    id: string,
+    updates: Partial<Omit<BackendGame, 'id' | 'created_at'>>
+  ): Promise<BackendGame> {
+    return fetchApi<BackendGame>(`/games/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  /**
+   * Delete a game and all its stats
+   */
+  async delete(id: string): Promise<void> {
+    return fetchApi<void>(`/games/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+// ==================== Game Stats API ====================
+
+export const gameStatsApi = {
+  /**
+   * Get all stats for a game
+   */
+  async getByGame(gameId: string): Promise<BackendGameStats[]> {
+    return fetchApi<BackendGameStats[]>(`/games/${gameId}/stats`);
+  },
+
+  /**
+   * Add/update stats for multiple players in a game
+   */
+  async bulkUpdate(
+    gameId: string,
+    stats: Omit<BackendGameStats, 'game_id'>[]
+  ): Promise<BackendGameStats[]> {
+    return fetchApi<BackendGameStats[]>(`/games/${gameId}/stats`, {
+      method: 'POST',
+      body: JSON.stringify({ game_id: gameId, stats }),
+    });
+  },
+
+  /**
+   * Get all game stats for a specific player
+   */
+  async getByPlayer(playerId: string): Promise<BackendGameStats[]> {
+    return fetchApi<BackendGameStats[]>(`/players/${playerId}/stats`);
+  },
+
+  /**
+   * Get calculated season stats for a player
+   */
+  async getSeasonStats(playerId: string): Promise<BackendSeasonStats> {
+    return fetchApi<BackendSeasonStats>(`/players/${playerId}/stats/season`);
+  },
+};
+
+
