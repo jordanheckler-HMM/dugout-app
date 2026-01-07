@@ -36,10 +36,10 @@ npm install  # First time only
 npm run dev
 ```
 
-Frontend will start on http://localhost:5173
+Frontend will start on http://localhost:8080
 
 ### Step 5: Open in Browser
-Navigate to: http://localhost:5173
+Navigate to: http://localhost:8080
 
 ## What to Expect
 
@@ -90,8 +90,8 @@ curl http://localhost:11434/api/tags
 # Check lyra-coach model exists
 ollama list
 
-# Test backend Lyra endpoint
-curl -X POST http://localhost:8000/health
+# Test backend health endpoint
+curl http://localhost:8000/health
 ```
 
 ### Data Not Persisting
