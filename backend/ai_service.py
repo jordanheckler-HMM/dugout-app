@@ -1,0 +1,187 @@
+import httpx
+import json
+import os
+from typing import List, Dict, AsyncGenerator, Any
+from ai_config import AIConfig
+
+
+class AIService:
+    """
+    Unified AI Service for Dugout App.
+
+    Handles routing requests associated with:
+    - Local Ollama instance
+    - OpenAI API
+    - Anthropic API
+
+    Supports both standard chat and streaming responses.
+    """
+
+    def __init__(self, config: AIConfig):
+        self.config = config
+
+    def update_config(self, config: AIConfig):
+        """Update the active configuration."""
+        self.config = config
+
+    async def check_connection(self) -> bool:
+        """Check connection to the currently configured provider."""
+        if self.config.provider == "ollama":
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(
+                        f"{self.config.ollama_url}/api/tags", timeout=3.0
+                    )
+                    return resp.status_code == 200
+            except Exception:
+                return False
+        elif self.config.provider == "openai":
+            # Simple check or just assume true if key exists
+            return bool(self.config.openai_key or os.getenv("OPENAI_API_KEY"))
+        elif self.config.provider == "anthropic":
+            return bool(self.config.anthropic_key or os.getenv("ANTHROPIC_API_KEY"))
+        return False
+
+    async def chat(self, messages: List[Dict[str, str]], model_id: str = None) -> str:
+        """
+        Send a chat message to the configured provider and get the full response text.
+        """
+        # Collect stream for simple implementation
+        response_text = ""
+        async for chunk in self.stream_chat(messages, model_id):
+            response_text += chunk
+        return response_text
+
+    async def stream_chat(
+        self, messages: List[Dict[str, str]], model_id: str = None
+    ) -> AsyncGenerator[str, None]:
+        """
+        Stream chat response from the configured provider.
+        Yields chunks of text content.
+        """
+        model = model_id or self.config.preferred_model
+
+        if self.config.provider == "ollama":
+            async for chunk in self._stream_ollama(messages, model):
+                yield chunk
+        elif self.config.provider == "openai":
+            async for chunk in self._stream_openai(messages, model):
+                yield chunk
+        elif self.config.provider == "anthropic":
+            async for chunk in self._stream_anthropic(messages, model):
+                yield chunk
+        else:
+            yield f"Error: Unknown provider '{self.config.provider}'"
+
+    # --- OLLAMA IMPLEMENTATION ---
+    async def _stream_ollama(self, messages: List[Dict[str, str]], model: str):
+        url = f"{self.config.ollama_url}/api/chat"
+        payload = {"model": model, "messages": messages, "stream": True}
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream("POST", url, json=payload) as response:
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            if "message" in data and "content" in data["message"]:
+                                yield data["message"]["content"]
+                            if data.get("done"):
+                                break
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            yield f"\n[AI Error: {str(e)}]"
+
+    # --- OPENAI IMPLEMENTATION ---
+    async def _stream_openai(self, messages: List[Dict[str, str]], model: str):
+        api_key = self.config.openai_key or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            yield "[Error: Missing OpenAI API Key]"
+            return
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {"model": model, "messages": messages, "stream": True}
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    async for line in response.aiter_lines():
+                        if not line or line.strip() == "data: [DONE]":
+                            continue
+                        if line.startswith("data: "):
+                            try:
+                                data = json.loads(line[6:])
+                                delta = data["choices"][0]["delta"]
+                                if "content" in delta:
+                                    yield delta["content"]
+                            except:
+                                continue
+        except Exception as e:
+            yield f"\n[OpenAI Error: {str(e)}]"
+
+    # --- ANTHROPIC IMPLEMENTATION ---
+    async def _stream_anthropic(self, messages: List[Dict[str, str]], model: str):
+        api_key = self.config.anthropic_key or os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            yield "[Error: Missing Anthropic API Key]"
+            return
+
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+
+        # Anthropic 'system' message must be top-level, not in messages list
+        system_prompt = None
+        filtered_messages = []
+        for msg in messages:
+            if msg["role"] == "system":
+                system_prompt = msg["content"]
+            else:
+                filtered_messages.append(msg)
+
+        payload = {
+            "model": model,
+            "messages": filtered_messages,
+            "stream": True,
+            "max_tokens": 4096,
+        }
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    "POST",
+                    "https://api.anthropic.com/v1/messages",
+                    headers=headers,
+                    json=payload,
+                ) as response:
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        try:
+                            data = json.loads(line[6:])
+                            if (
+                                data["type"] == "content_block_delta"
+                                and "delta" in data
+                            ):
+                                if "text" in data["delta"]:
+                                    yield data["delta"]["text"]
+                        except:
+                            continue
+        except Exception as e:
+            yield f"\n[Anthropic Error: {str(e)}]"

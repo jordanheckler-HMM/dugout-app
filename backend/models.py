@@ -86,6 +86,7 @@ class Configuration(BaseModel):
     - name: Descriptive name for this configuration
     - lineup: Array of 9 LineupSlot objects
     - field_positions: Array of FieldPosition objects
+    - use_dh: Whether the DH rule is being used
     - notes: Optional notes about when/why to use this config
     - last_used_timestamp: When this config was last loaded
     """
@@ -93,6 +94,7 @@ class Configuration(BaseModel):
     name: str
     lineup: List[LineupSlot]
     field_positions: List[FieldPosition]
+    use_dh: bool = True
     notes: Optional[str] = ""
     last_used_timestamp: Optional[str] = None
 
@@ -123,6 +125,22 @@ class LyraResponse(BaseModel):
     """
     analysis: str
     timestamp: str
+
+
+class ChatMessage(BaseModel):
+    """
+    Single message in a chat conversation.
+    """
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    """
+    Request for AI chat completion/streaming.
+    """
+    messages: List[ChatMessage]
+    model: Optional[str] = None
 
 
 class PlayerCreate(BaseModel):
@@ -247,6 +265,7 @@ class ConfigurationCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     lineup: List[LineupSlot]
     field_positions: List[FieldPosition]
+    use_dh: bool = True
     notes: Optional[str] = ""
     
     @field_validator('name')

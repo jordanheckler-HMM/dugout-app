@@ -1,0 +1,38 @@
+[
+  {
+    "position": "P",
+    "player_id": null
+  },
+  {
+    "position": "C",
+    "player_id": null
+  },
+  {
+    "position": "1B",
+    "player_id": null
+  },
+  {
+    "position": "2B",
+    "player_id": null
+  },
+  {
+    "position": "3B",
+    "player_id": null
+  },
+  {
+    "position": "SS",
+    "player_id": null
+  },
+  {
+    "position": "LF",
+    "player_id": null
+  },
+  {
+    "position": "CF",
+    "player_id": null
+  },
+  {
+    "position": "RF",
+    "player_id": null
+  }
+]

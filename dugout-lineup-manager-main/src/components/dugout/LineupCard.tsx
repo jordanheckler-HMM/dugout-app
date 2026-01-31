@@ -1,6 +1,7 @@
 import { LineupSlot, Player, Position } from '@/types/player';
 import { cn } from '@/lib/utils';
 import { User, X } from 'lucide-react';
+import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
 
 interface LineupCardProps {
   lineup: LineupSlot[];
@@ -13,6 +14,46 @@ interface LineupCardProps {
   onAddToBench: (playerId: string) => void;
   draggingPlayerId: string | null;
   onDragPlayer: (playerId: string) => void;
+}
+
+// Helper component to display player stats in lineup
+function PlayerStatsDisplay({ playerId }: { playerId: string }) {
+  const { stats, loading } = usePlayerSeasonStats(playerId);
+  
+  if (loading || !stats) return null;
+  
+  // Show key batting stats
+  if (stats.hitting.ab && stats.hitting.ab > 0) {
+    return (
+      <div className="flex gap-2 text-[10px] text-muted-foreground">
+        {stats.hitting.avg !== undefined && (
+          <span>AVG: {stats.hitting.avg.toFixed(3).replace(/^0/, '')}</span>
+        )}
+        {stats.hitting.hr !== undefined && (
+          <span>HR: {stats.hitting.hr}</span>
+        )}
+        {stats.hitting.rbi !== undefined && (
+          <span>RBI: {stats.hitting.rbi}</span>
+        )}
+      </div>
+    );
+  }
+  
+  // Show key pitching stats
+  if (stats.pitching.ip && stats.pitching.ip > 0) {
+    return (
+      <div className="flex gap-2 text-[10px] text-muted-foreground">
+        {stats.pitching.era !== undefined && (
+          <span>ERA: {stats.pitching.era.toFixed(2)}</span>
+        )}
+        {stats.pitching.k !== undefined && (
+          <span>K: {stats.pitching.k}</span>
+        )}
+      </div>
+    );
+  }
+  
+  return null;
 }
 
 export function LineupCard({
@@ -81,25 +122,29 @@ export function LineupCard({
               <div className="flex-1 min-w-0">
                 {player ? (
                   <div 
-                    className="flex items-center gap-2 cursor-move"
+                    className="cursor-move"
                     draggable
                     onDragStart={() => onDragPlayer(player.id)}
                   >
-                    <div className="flex items-center gap-2">
-                      {player.number && (
-                        <span className="text-xs font-medium text-muted-foreground">
-                          #{player.number}
-                        </span>
-                      )}
-                      <span className="font-medium text-foreground">{player.name}</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2">
+                        {player.number && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            #{player.number}
+                          </span>
+                        )}
+                        <span className="font-medium text-foreground">{player.name}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        {player.positions.slice(0, 2).map(pos => (
+                          <span key={pos} className="position-badge text-[10px]">
+                            {pos}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      {player.positions.slice(0, 2).map(pos => (
-                        <span key={pos} className="position-badge text-[10px]">
-                          {pos}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Stats row */}
+                    <PlayerStatsDisplay playerId={player.id} />
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground/50 italic">

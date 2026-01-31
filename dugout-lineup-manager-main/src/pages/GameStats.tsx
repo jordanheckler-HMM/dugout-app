@@ -168,6 +168,27 @@ const GameStats = () => {
     setIsDirty(true);
   };
 
+  // Helper to update innings pitched using baseball notation (full innings + outs)
+  const updateInningsPitched = (playerId: string, fullInnings: number, outs: number) => {
+    // Convert to baseball notation: full_innings.outs (e.g., 1 inning + 2 outs = 1.2)
+    const ipValue = fullInnings + (outs / 10);
+    setStats(prev => ({
+      ...prev,
+      [playerId]: {
+        ...prev[playerId],
+        ip: ipValue,
+      },
+    }));
+    setIsDirty(true);
+  };
+
+  // Helper to parse baseball IP notation into full innings and outs
+  const parseInningsPitched = (ip: number): { fullInnings: number; outs: number } => {
+    const fullInnings = Math.floor(ip);
+    const outs = Math.round((ip - fullInnings) * 10);
+    return { fullInnings, outs };
+  };
+
   const handleSave = async () => {
     if (!gameId) return;
     
@@ -420,17 +441,41 @@ const GameStats = () => {
 
                   <TabsContent value="pitching" className="space-y-4">
                     <div className="grid grid-cols-4 gap-3">
-                      <div>
-                        <Label htmlFor={`${player.id}-ip`} className="text-xs">IP</Label>
-                        <Input
-                          id={`${player.id}-ip`}
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={stats[player.id]?.ip || 0}
-                          onChange={(e) => updateStat(player.id, 'ip', e.target.value)}
-                          className="h-9"
-                        />
+                      <div className="col-span-2">
+                        <Label className="text-xs">IP (Innings + Outs)</Label>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <Input
+                              id={`${player.id}-ip-innings`}
+                              type="number"
+                              min="0"
+                              placeholder="Innings"
+                              value={parseInningsPitched(stats[player.id]?.ip || 0).fullInnings}
+                              onChange={(e) => {
+                                const fullInnings = parseInt(e.target.value) || 0;
+                                const { outs } = parseInningsPitched(stats[player.id]?.ip || 0);
+                                updateInningsPitched(player.id, fullInnings, outs);
+                              }}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="w-20">
+                            <select
+                              id={`${player.id}-ip-outs`}
+                              value={parseInningsPitched(stats[player.id]?.ip || 0).outs}
+                              onChange={(e) => {
+                                const outs = parseInt(e.target.value);
+                                const { fullInnings } = parseInningsPitched(stats[player.id]?.ip || 0);
+                                updateInningsPitched(player.id, fullInnings, outs);
+                              }}
+                              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                            >
+                              <option value="0">0 outs</option>
+                              <option value="1">1 out</option>
+                              <option value="2">2 outs</option>
+                            </select>
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <Label htmlFor={`${player.id}-h-allowed`} className="text-xs">H</Label>

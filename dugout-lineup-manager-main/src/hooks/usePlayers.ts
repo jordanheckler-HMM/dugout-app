@@ -64,7 +64,12 @@ export function usePlayers() {
       if (updates.bats !== undefined) backendUpdates.bats = updates.bats;
       if (updates.throws !== undefined) backendUpdates.throws = updates.throws;
       if (updates.status !== undefined) backendUpdates.status = updates.status;
-      if (updates.positions !== undefined) {
+      
+      // Handle positions - check for primaryPosition/secondaryPositions first, then fall back to positions array
+      if (updates.primaryPosition !== undefined) {
+        backendUpdates.primary_position = updates.primaryPosition;
+        backendUpdates.secondary_positions = updates.secondaryPositions || [];
+      } else if (updates.positions !== undefined) {
         const [primary, ...secondary] = updates.positions;
         backendUpdates.primary_position = primary;
         backendUpdates.secondary_positions = secondary;

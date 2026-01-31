@@ -117,8 +117,11 @@ export function useGameConfig(players?: Player[]) {
           id: c.id,
           name: c.name,
           lineup: mapBackendLineupToFrontend(c.lineup),
-          fieldPositions: mapBackendFieldToFrontend(c.field_positions, createFieldPositions(true)),
-          useDH: true, // Backend doesn't track this yet
+          fieldPositions: mapBackendFieldToFrontend(
+            c.field_positions, 
+            createFieldPositions(c.use_dh ?? true)
+          ),
+          useDH: c.use_dh ?? true,
           createdAt: c.last_used_timestamp ? new Date(c.last_used_timestamp) : new Date(),
           updatedAt: c.last_used_timestamp ? new Date(c.last_used_timestamp) : new Date(),
         }));
@@ -580,6 +583,7 @@ export function useGameConfig(players?: Player[]) {
         name,
         lineup: mapFrontendLineupToBackend(lineup),
         field_positions: mapFrontendFieldToBackend(fieldPositions),
+        use_dh: useDH,
         notes: '',
       });
 
@@ -609,8 +613,15 @@ export function useGameConfig(players?: Player[]) {
       // Load from backend (this updates last_used_timestamp)
       const backendConfig = await configurationApi.getById(configId);
       
+      // Restore the DH state from the saved configuration
+      const savedUseDH = backendConfig.use_dh ?? true;
+      setUseDH(savedUseDH);
+      
       const frontendLineup = mapBackendLineupToFrontend(backendConfig.lineup);
-      const frontendField = mapBackendFieldToFrontend(backendConfig.field_positions, createFieldPositions(useDH));
+      const frontendField = mapBackendFieldToFrontend(
+        backendConfig.field_positions, 
+        createFieldPositions(savedUseDH)
+      );
       
       setLineup(frontendLineup);
       setFieldPositions(frontendField);
@@ -623,7 +634,7 @@ export function useGameConfig(players?: Player[]) {
       console.error('Failed to load configuration:', err);
       throw err;
     }
-  }, [useDH]);
+  }, []);
 
   const deleteConfiguration = useCallback(async (configId: string) => {
     try {

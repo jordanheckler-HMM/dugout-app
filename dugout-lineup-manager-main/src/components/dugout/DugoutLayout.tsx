@@ -4,8 +4,11 @@ import { usePlayers } from '@/hooks/usePlayers';
 import { useGameConfig } from '@/hooks/useGameConfig';
 import { PlayersSidebar } from './PlayersSidebar';
 import { GameCanvas } from './GameCanvas';
+import { PlayerRankingsPanel } from './PlayerRankingsPanel';
 import { LyraPanel } from './LyraPanel';
 import { toast } from 'sonner';
+import { useAIStore } from '@/store/aiStore';
+import { cn } from '@/lib/utils';
 
 export function DugoutLayout() {
   const {
@@ -39,6 +42,9 @@ export function DugoutLayout() {
   } = useGameConfig(players);
 
   const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<'rankings' | 'lyra'>('rankings');
+
+  const { uiTheme } = useAIStore();
 
   // Warn on page unload if there are unsaved changes
   useEffect(() => {
@@ -74,7 +80,7 @@ export function DugoutLayout() {
 
   return (
     <div
-      className="h-screen flex overflow-hidden"
+      className={cn("h-screen flex overflow-hidden", uiTheme === 'glass' && "glass-panel")}
       onDragEnd={handleDragEnd}
     >
       {/* Left sidebar - Players */}
@@ -117,13 +123,42 @@ export function DugoutLayout() {
         />
       </div>
 
-      {/* Right panel - Lyra */}
-      <div className="w-80 flex-shrink-0 border-l border-lyra-border">
-        <LyraPanel 
-          lineup={lineup}
-          fieldPositions={fieldPositions}
-          players={players}
-        />
+      {/* Right panel - Toggle between Player Rankings and Lyra AI */}
+      <div className="w-80 flex-shrink-0 border-l border-lyra-border flex flex-col">
+        {/* Panel Toggle Header */}
+        <div className="flex border-b border-lyra-border bg-lyra">
+          <button
+            onClick={() => setActivePanel('rankings')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activePanel === 'rankings'
+              ? 'bg-lyra-muted text-gold border-b-2 border-gold'
+              : 'text-lyra-foreground/60 hover:text-lyra-foreground hover:bg-lyra-muted/50'
+              }`}
+          >
+            Rankings
+          </button>
+          <button
+            onClick={() => setActivePanel('lyra')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${activePanel === 'lyra'
+              ? 'bg-lyra-muted text-gold border-b-2 border-gold'
+              : 'text-lyra-foreground/60 hover:text-lyra-foreground hover:bg-lyra-muted/50'
+              }`}
+          >
+            AI Coach
+          </button>
+        </div>
+
+        {/* Conditional Panel Rendering */}
+        <div className="flex-1 min-h-0">
+          {activePanel === 'rankings' ? (
+            <PlayerRankingsPanel players={players} />
+          ) : (
+            <LyraPanel
+              players={players}
+              lineup={lineup}
+              fieldPositions={fieldPositions}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

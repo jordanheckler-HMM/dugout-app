@@ -38,6 +38,7 @@ export interface BackendConfiguration {
   name: string;
   lineup: BackendLineupSlot[];
   field_positions: BackendFieldPosition[];
+  use_dh?: boolean;
   notes?: string;
   last_used_timestamp?: string;
 }
@@ -132,6 +133,9 @@ export interface BackendSeasonStats {
     fpct?: number;
   };
 }
+
+// AI Settings types
+import { AIConfig, ChatMessage } from '@/types/ai';
 
 // Helper for error handling
 class ApiError extends Error {
@@ -291,6 +295,7 @@ export const configurationApi = {
     name: string;
     lineup: BackendLineupSlot[];
     field_positions: BackendFieldPosition[];
+    use_dh: boolean;
     notes?: string;
   }): Promise<BackendConfiguration> {
     return fetchApi<BackendConfiguration>('/configurations', {
@@ -322,6 +327,68 @@ export const lyraApi = {
     return fetchApi<LyraAnalysisResponse>('/lyra/analyze', {
       method: 'POST',
       body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Stream chat with AI provider
+   */
+  async streamChat(
+    messages: ChatMessage[],
+    model: string,
+    onChunk: (chunk: string) => void,
+    onDone?: () => void,
+    onError?: (err: any) => void
+  ): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE}/lyra/chat/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messages, model }),
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.body) throw new Error('Response body is null');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        // Parse SSE format if needed, or if backend sends raw text chunks
+        // Backend sends "text/event-stream" but implementation uses yield plain text in chunks?
+        // Wait, StreamingResponse in FastAPI usually sends chunks as is if media_type is generic, 
+        // but text/event-stream implies "data: ..." format.
+        // My backend implementation yielded raw text or json? 
+        // Let's check backend ai_service.py: yield chunk. 
+        // FastAPI StreamingResponse just yields what you give it. 
+        // If I put media_type="text/event-stream", browser might expect SSE format (data: ...\n\n).
+        // My backend yielded raw content chunks. 
+        // So I'll treat it as raw stream for now.
+        onChunk(chunk);
+      }
+      if (onDone) onDone();
+    } catch (err) {
+      if (onError) onError(err);
+    }
+  },
+};
+
+// ==================== Settings API ====================
+
+export const settingsApi = {
+  async getAISettings(): Promise<AIConfig> {
+    return fetchApi<AIConfig>('/settings/ai');
+  },
+
+  async updateAISettings(config: AIConfig): Promise<AIConfig> {
+    return fetchApi<AIConfig>('/settings/ai', {
+      method: 'PUT',
+      body: JSON.stringify(config),
     });
   },
 };

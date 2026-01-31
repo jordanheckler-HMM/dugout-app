@@ -207,9 +207,13 @@ export function GameCanvas({
             )}
 
             <button
-              onClick={viewMode === 'lineup' ? onClearLineup : onClearField}
+              onClick={async () => {
+                // Clear both lineup and field regardless of view mode
+                await onClearLineup();
+                await onClearField();
+              }}
               className="p-2 rounded-md hover:bg-muted transition-colors"
-              title={`Clear ${viewMode}`}
+              title="Clear lineup & field"
             >
               <RotateCcw className="w-4 h-4 text-muted-foreground" />
             </button>

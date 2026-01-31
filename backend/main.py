@@ -34,9 +34,12 @@ from models import (
     GameStats,
     GameStatsCreate,
     BulkGameStatsCreate,
+    ChatRequest,
 )
 from storage import JSONStorage
 from ollama_client import LyraClient
+from ai_service import AIService, AIConfig
+from fastapi.responses import StreamingResponse
 
 
 # Initialize FastAPI app
@@ -63,6 +66,10 @@ app.add_middleware(
 # Initialize storage and Ollama client
 storage = JSONStorage(data_dir="data")
 lyra = LyraClient(model_name="lyra-coach:latest")
+
+# Initialize Unified AI Service
+ai_config = AIConfig()
+ai_service = AIService(ai_config)
 
 
 # --- Health check ---
@@ -495,6 +502,28 @@ def get_player_game_stats(player_id: str):
     return stats
 
 
+def convert_baseball_ip_to_actual_innings(ip: float) -> float:
+    """
+    Convert baseball innings pitched notation to actual fractional innings.
+    
+    In baseball scoring:
+    - 1.0 = 1 full inning = 3 outs
+    - 1.1 = 1 inning + 1 out = 1⅓ innings = 1.333...
+    - 1.2 = 1 inning + 2 outs = 1⅔ innings = 1.666...
+    
+    The decimal portion represents outs (thirds), not tenths.
+    
+    Example:
+        convert_baseball_ip_to_actual_innings(1.2) -> 1.667
+        convert_baseball_ip_to_actual_innings(5.1) -> 5.333
+    """
+    full_innings = int(ip)
+    # Extract the decimal portion and convert to outs (0, 1, or 2)
+    outs = round((ip - full_innings) * 10)
+    # Convert outs to fractional innings (divide by 3)
+    return full_innings + (outs / 3.0)
+
+
 @app.get("/players/{player_id}/stats/season", tags=["Game Stats"])
 def get_player_season_stats(player_id: str):
     """
@@ -565,9 +594,11 @@ def get_player_season_stats(player_id: str):
     }
     
     # Calculate ERA and WHIP
+    # Convert baseball IP notation (e.g., 1.2) to actual innings (e.g., 1.667)
     if pitching["ip"] > 0:
-        pitching["era"] = round((pitching["er"] * 9) / pitching["ip"], 2)
-        pitching["whip"] = round((pitching["h"] + pitching["bb"]) / pitching["ip"], 2)
+        actual_ip = convert_baseball_ip_to_actual_innings(pitching["ip"])
+        pitching["era"] = round((pitching["er"] * 9) / actual_ip, 2)
+        pitching["whip"] = round((pitching["h"] + pitching["bb"]) / actual_ip, 2)
     
     # Aggregate fielding stats
     fielding = {
@@ -635,6 +666,42 @@ def analyze_with_lyra(request: LyraRequest):
         )
 
 
+@app.post("/lyra/chat/stream", tags=["Lyra"])
+async def stream_chat_with_lyra(request: ChatRequest):
+    """
+    Stream a chat response from the configured AI provider.
+    
+    Supports Ollama, OpenAI, and Anthropic via the unified AIService.
+    Returns a server-sent events (SSE) stream of text chunks.
+    """
+    # Convert Pydantic models to dicts for the service
+    messages = [{"role": m.role, "content": m.content} for m in request.messages]
+    
+    return StreamingResponse(
+        ai_service.stream_chat(messages, request.model),
+        media_type="text/event-stream"
+    )
+
+
+# --- AI Settings endpoints ---
+
+@app.get("/settings/ai", response_model=AIConfig, tags=["Settings"])
+def get_ai_settings():
+    """Get current AI configuration."""
+    return ai_service.config
+
+
+@app.put("/settings/ai", response_model=AIConfig, tags=["Settings"])
+def update_ai_settings(config: AIConfig):
+    """
+    Update AI configuration.
+    
+    Switches providers or updates API keys/URLs.
+    """
+    ai_service.update_config(config)
+    return ai_service.config
+
+
 # --- Application startup ---
 
 @app.on_event("startup")
@@ -643,22 +710,22 @@ async def startup_event():
     print("=" * 60)
     print("🧢 Dugout Baseball Coaching API")
     print("=" * 60)
-    print(f"API running at: http://localhost:8000")
-    print(f"API docs at: http://localhost:8000/docs")
+    print("API running at: http://localhost:8000")
+    print("API docs at: http://localhost:8000/docs")
     print(f"Data directory: {storage.data_dir.absolute()}")
     
     # Check Ollama connection
     if lyra.check_connection():
         models = lyra.list_models()
-        print(f"✓ Ollama connected")
+        print("✓ Ollama connected")
         print(f"  Available models: {', '.join(models)}")
         if "lyra-coach:latest" in models:
-            print(f"  ✓ lyra-coach:latest model ready")
+            print("  ✓ lyra-coach:latest model ready")
         else:
-            print(f"  ⚠ lyra-coach:latest model NOT found - AI features unavailable")
+            print("  ⚠ lyra-coach:latest model NOT found - AI features unavailable")
     else:
-        print(f"✗ Ollama not connected - AI features unavailable")
-        print(f"  Start Ollama with: ollama serve")
+        print("✗ Ollama not connected - AI features unavailable")
+        print("  Start Ollama with: ollama serve")
     
     print("=" * 60)
 

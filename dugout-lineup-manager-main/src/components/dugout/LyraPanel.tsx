@@ -1,18 +1,28 @@
-/**
- * CHANGES: Updated to call real backend Lyra API instead of mock responses
- * - Now receives lineup, field positions, and players as props
- * - Sends actual context to POST /lyra/analyze
- * - Displays real AI coaching perspective
- * - Added error handling for API failures
- */
-
-import { useState } from 'react';
-import { Send, Sparkles, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Sparkles, AlertCircle, Settings as SettingsIcon, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Player, LineupSlot, FieldPosition } from '@/types/player';
-import { lyraApi } from '@/api/client';
+import { lyraApi, settingsApi } from '@/api/client';
 import { mapFrontendPlayerToBackend, mapFrontendLineupToBackend, mapFrontendFieldToBackend } from '@/api/mappers';
+import { useAIStore } from '@/store/aiStore';
+import { AISettingsPanel } from './AISettingsPanel';
+import { ChatMessage } from '@/types/ai';
+
+interface Message {
+  id: string;
+  role: 'user' | 'lyra';
+  content: string;
+  timestamp: Date;
+}
+
+interface LyraPanelProps {
+  lineup: LineupSlot[];
+  fieldPositions: FieldPosition[];
+  players: Player[];
+}
 
 interface Message {
   id: string;
@@ -35,18 +45,30 @@ const examplePrompts = [
 ];
 
 export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
+  const { provider, preferredModel } = useAIStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
+    const userContent = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: userContent,
       timestamp: new Date()
     };
 
@@ -55,49 +77,74 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
     setIsTyping(true);
     setError(null);
 
+    // Prepare context message for the AI
+    // We send context as a hidden system/user message or part of the first message
+    // Since streamChat takes ChatMessage[], we construct the conversation history locally
+    // but we need to inject the game state context.
+
+    // Convert frontend data to backend format for context string
+    const backendPlayers = players.map(p => ({
+      id: p.id,
+      ...mapFrontendPlayerToBackend(p)
+    }));
+    const backendLineup = mapFrontendLineupToBackend(lineup);
+    const backendField = mapFrontendFieldToBackend(fieldPositions);
+
+    const contextPrompt = `
+Context Data:
+Lineup: ${JSON.stringify(backendLineup)}
+Field Positions: ${JSON.stringify(backendField)}
+Players: ${JSON.stringify(backendPlayers.map(p => ({
+      name: p.name,
+      primary: p.primary_position,
+      bats: p.bats
+    })))}
+
+User Question: ${userContent}
+    `.trim();
+
+    const conversationHistory: ChatMessage[] = [
+      { role: 'system', content: "You are Lyra, an advanced baseball coaching assistant in the Dugout app. Analyze the provided lineup and field positions. Be concise, strategic, and helpful." },
+      ...messages.map(m => ({
+        role: m.role === 'lyra' ? 'assistant' : 'user',
+        content: m.content
+      }) as ChatMessage),
+      { role: 'user', content: contextPrompt }
+    ];
+
     try {
-      // Convert frontend data to backend format
-      // Keep ID attached during mapping to prevent mismatch
-      const backendPlayers = players.map(p => ({
-        id: p.id,
-        ...mapFrontendPlayerToBackend(p)
-      }));
-      const backendLineup = mapFrontendLineupToBackend(lineup);
-      const backendField = mapFrontendFieldToBackend(fieldPositions);
+      let currentResponseContent = "";
+      const responseId = (Date.now() + 1).toString();
 
-      // Call real Lyra API
-      const response = await lyraApi.analyze({
-        lineup: backendLineup,
-        field_positions: backendField,
-        players: backendPlayers,
-        question: input.trim()
-      });
-
-      const lyraMessage: Message = {
-        id: (Date.now() + 1).toString(),
+      // Create a placeholder message for streaming
+      setMessages(prev => [...prev, {
+        id: responseId,
         role: 'lyra',
-        content: response.analysis,
-        timestamp: new Date(response.timestamp)
-      };
-
-      setMessages(prev => [...prev, lyraMessage]);
-    } catch (err) {
-      console.error('Failed to get Lyra response:', err);
-      setError(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to connect to Lyra. Make sure the backend is running.'
-      );
-      
-      // Add error message to chat
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'lyra',
-        content: '⚠️ I\'m having trouble connecting right now. Make sure the backend is running with Ollama and the lyra-coach model.',
+        content: '',
         timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
+      }]);
+
+      await lyraApi.streamChat(
+        conversationHistory,
+        preferredModel,
+        (chunk) => {
+          currentResponseContent += chunk;
+          setMessages(prev => prev.map(m =>
+            m.id === responseId
+              ? { ...m, content: currentResponseContent }
+              : m
+          ));
+        },
+        () => setIsTyping(false),
+        (err) => {
+          console.error("Stream error:", err);
+          setError("Connection interrupted.");
+          setIsTyping(false);
+        }
+      );
+    } catch (err) {
+      console.error('Failed to start stream:', err);
+      setError('Failed to connect to Lyra.');
       setIsTyping(false);
     }
   };
@@ -116,80 +163,115 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
   return (
     <div className="h-full flex flex-col bg-lyra text-lyra-foreground">
       {/* Header */}
-      <div className="p-4 border-b border-lyra-border">
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-gold" />
-          <h2 className="text-lg font-semibold">Lyra</h2>
-        </div>
-        <p className="text-xs text-lyra-foreground/60">
-          Ask for perspective. You make the decisions.
-        </p>
-        {error && (
-          <div className="mt-2 flex items-start gap-2 text-xs text-red-400 bg-red-950/20 rounded p-2">
-            <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
+      <div className="p-4 border-b border-lyra-border flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-gold" />
+            <h2 className="text-lg font-semibold">Lyra</h2>
+            <span className="text-[10px] bg-lyra-border/50 px-1.5 py-0.5 rounded text-lyra-foreground/60">
+              {provider}
+            </span>
           </div>
-        )}
+          <p className="text-xs text-lyra-foreground/60">
+            Ask for perspective. You make the decisions.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowSettings(!showSettings)}
+          className={cn(
+            "p-2 rounded-md transition-colors hover:bg-lyra-muted",
+            showSettings && "bg-lyra-muted text-gold"
+          )}
+        >
+          <SettingsIcon className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="space-y-4">
-              <p className="text-sm text-lyra-foreground/50 text-center py-4">
-                Ask me about your lineup, positioning, or strategy considerations.
-              </p>
-              <div className="space-y-2">
-                <p className="text-xs text-lyra-foreground/40 uppercase tracking-wide">
-                  Try asking:
+      {error && (
+        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-xs flex items-center gap-2">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </div>
+      )}
+
+      {showSettings ? (
+        <ScrollArea className="flex-1 bg-background/50">
+          <AISettingsPanel />
+        </ScrollArea>
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="space-y-4">
+                <p className="text-sm text-lyra-foreground/50 text-center py-4">
+                  Ask me about your lineup, positioning, or strategy considerations.
                 </p>
-                {examplePrompts.map((prompt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleExampleClick(prompt)}
-                    className="block w-full text-left px-3 py-2 rounded-lg text-sm text-lyra-foreground/70 bg-lyra-muted/30 hover:bg-lyra-muted/50 transition-colors"
-                  >
-                    "{prompt}"
-                  </button>
-                ))}
+                <div className="space-y-2">
+                  <p className="text-xs text-lyra-foreground/40 uppercase tracking-wide">
+                    Try asking:
+                  </p>
+                  {examplePrompts.map((prompt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleExampleClick(prompt)}
+                      className="block w-full text-left px-3 py-2 rounded-lg text-sm text-lyra-foreground/70 bg-lyra-muted/30 hover:bg-lyra-muted/50 transition-colors"
+                    >
+                      "{prompt}"
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            messages.map(message => (
-              <div
-                key={message.id}
-                className={cn(
-                  'animate-fade-in',
-                  message.role === 'user' ? 'ml-4' : 'mr-4'
-                )}
-              >
+            ) : (
+              messages.map(message => (
                 <div
+                  key={message.id}
                   className={cn(
-                    'rounded-lg px-3 py-2.5 text-sm',
-                    message.role === 'user'
-                      ? 'bg-lyra-muted text-lyra-foreground ml-auto max-w-[85%]'
-                      : 'bg-lyra-border/50 text-lyra-foreground'
+                    'animate-fade-in group',
+                    message.role === 'user' ? 'ml-4' : 'mr-4'
                   )}
                 >
-                  {message.content}
+                  <div
+                    className={cn(
+                      'rounded-lg px-3 py-2.5 text-sm shadow-sm',
+                      message.role === 'user'
+                        ? 'bg-lyra-muted text-lyra-foreground ml-auto max-w-[85%] border border-lyra-border'
+                        : 'glass-panel text-lyra-foreground'
+                    )}
+                  >
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-1 last:mb-0 leading-relaxed">{children}</p>,
+                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">{children}</a>,
+                        ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                        h1: ({ children }) => <h1 className="text-sm font-bold mt-2 mb-1">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-sm font-bold mt-2 mb-1">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>,
+                        blockquote: ({ children }) => <blockquote className="border-l-2 border-gold/50 pl-2 italic my-2">{children}</blockquote>,
+                        code: ({ children }) => <code className="bg-black/20 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                  <p className="text-[10px] text-lyra-foreground/40 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
-                <p className="text-[10px] text-lyra-foreground/40 mt-1 px-1">
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            ))
-          )}
+              ))
+            )}
+            <div ref={scrollRef} />
 
-          {isTyping && (
-            <div className="flex items-center gap-1 px-3 py-2 text-lyra-foreground/50">
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" style={{ animationDelay: '0.4s' }} />
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            {isTyping && (
+              <div className="flex items-center gap-1 px-3 py-2 text-lyra-foreground/50">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span className="text-xs">Thinking...</span>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      )}
 
       {/* Input */}
       <div className="p-3 border-t border-lyra-border">
