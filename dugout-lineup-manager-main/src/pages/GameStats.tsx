@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { gamesApi, gameStatsApi, playersApi, BackendGame, BackendGameStats, BackendPlayer } from '@/api/client';
-import { Game, Player } from '@/types/player';
+import { Game, Player, Position } from '@/types/player';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,13 +12,18 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 function backendPlayerToFrontend(bp: BackendPlayer): Player {
+  const primaryPosition = bp.primary_position as Position;
+  const secondaryPositions = (bp.secondary_positions || []).filter(Boolean) as Position[];
+
   return {
     id: bp.id,
     name: bp.name,
     number: bp.number,
-    positions: [bp.primary_position, ...(bp.secondary_positions || [])].filter(Boolean) as any[],
-    bats: bp.bats as any,
-    throws: bp.throws as any,
+    primaryPosition,
+    secondaryPositions,
+    positions: [primaryPosition, ...secondaryPositions],
+    bats: bp.bats as Player['bats'],
+    throws: bp.throws as Player['throws'],
     status: 'active',
     stats: {},
   };
@@ -556,4 +561,3 @@ const GameStats = () => {
 };
 
 export default GameStats;
-

@@ -48,7 +48,7 @@ export function mapBackendPlayerToFrontend(
 export function mapFrontendPlayerToBackend(
   player: Omit<Player, 'id'> | Player
 ): Omit<BackendPlayer, 'id'> {
-  const result: any = {
+  const result: Omit<BackendPlayer, 'id'> = {
     name: player.name,
     primary_position: player.primaryPosition,
     secondary_positions: player.secondaryPositions || [],
@@ -145,4 +145,3 @@ export function mapFrontendFieldToBackend(
     player_id: fieldPos.playerId,
   }));
 }
-

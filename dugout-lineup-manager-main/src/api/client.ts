@@ -338,7 +338,7 @@ export const lyraApi = {
     model: string,
     onChunk: (chunk: string) => void,
     onDone?: () => void,
-    onError?: (err: any) => void
+    onError?: (err: unknown) => void
   ): Promise<void> {
     try {
       const response = await fetch(`${API_BASE}/lyra/chat/stream`, {
@@ -504,5 +504,4 @@ export const gameStatsApi = {
     return fetchApi<BackendSeasonStats>(`/players/${playerId}/stats/season`);
   },
 };
-
 
