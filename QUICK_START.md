@@ -27,7 +27,7 @@ cd backend
 start.bat   # Windows
 ```
 
-Backend will start on http://localhost:8000
+Backend will start on http://localhost:8100
 
 ### Step 4: Start Frontend
 ```bash
@@ -36,10 +36,10 @@ npm install  # First time only
 npm run dev
 ```
 
-Frontend will start on http://localhost:8080
+Frontend will start on http://localhost:8123
 
 ### Step 5: Open in Browser
-Navigate to: http://localhost:8080
+Navigate to: http://localhost:8123
 
 ## What to Expect
 
@@ -78,7 +78,7 @@ uvicorn main:app --reload
 ```
 
 ### Frontend Shows Connection Error
-- Check backend is running: `curl http://localhost:8000/health`
+- Check backend is running: `curl http://localhost:8100/health`
 - Check CORS is configured for your frontend port
 - Check browser console for specific error
 
@@ -91,7 +91,7 @@ curl http://localhost:11434/api/tags
 ollama list
 
 # Test backend health endpoint
-curl http://localhost:8000/health
+curl http://localhost:8100/health
 ```
 
 ### Data Not Persisting
@@ -104,7 +104,7 @@ curl http://localhost:8000/health
 - **Backend**: `/backend/`
 - **Frontend**: `/dugout-lineup-manager-main/`
 - **Data Storage**: `/backend/data/` (JSON files)
-- **API Docs**: http://localhost:8000/docs (when backend running)
+- **API Docs**: http://localhost:8100/docs (when backend running)
 
 ## Architecture
 
@@ -122,7 +122,7 @@ curl http://localhost:8000/health
                   ▼
 ┌─────────────────────────────────────────────┐
 │  Backend (FastAPI)                          │
-│  http://localhost:8000                      │
+│  http://localhost:8100                      │
 │                                             │
 │  - main.py (REST endpoints)                 │
 │  - storage.py (JSON persistence)            │
@@ -151,7 +151,7 @@ curl http://localhost:8000/health
 
 ## API Reference
 
-See full API docs at: http://localhost:8000/docs
+See full API docs at: http://localhost:8100/docs
 
 Key endpoints:
 - `GET /players` - List all players
@@ -171,4 +171,3 @@ Key endpoints:
 ✅ Your data never leaves your computer  
 
 Enjoy coaching! 🧢⚾
-

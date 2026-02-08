@@ -1,14 +1,14 @@
 /**
  * API Client for Dugout Baseball Coaching Backend
  * 
- * Connects to the local FastAPI backend running at http://localhost:8000
+ * Connects to the local FastAPI backend running at http://localhost:8100
  * All operations are local-first with no authentication.
  * 
  * CHANGES: Created new file to handle all backend communication
  */
 
 // Backend configuration
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8100";
 
 // Type definitions matching backend models
 export interface BackendPlayer {
@@ -504,4 +504,3 @@ export const gameStatsApi = {
     return fetchApi<BackendSeasonStats>(`/players/${playerId}/stats/season`);
   },
 };
-

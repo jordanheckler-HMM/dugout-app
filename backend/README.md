@@ -67,14 +67,14 @@ Start the FastAPI server:
 uvicorn main:app --reload
 ```
 
-The server will start on `http://localhost:8000`
+The server will start on `http://localhost:8100`
 
 You should see output like:
 ```
 🧢 Dugout Baseball Coaching API
 ============================================================
-API running at: http://localhost:8000
-API docs at: http://localhost:8000/docs
+API running at: http://localhost:8100
+API docs at: http://localhost:8100/docs
 Data directory: /path/to/backend/data
 ✓ Ollama connected
   Available models: lyra-coach
@@ -85,8 +85,8 @@ Data directory: /path/to/backend/data
 ## API Documentation
 
 Once the server is running, visit:
-- **Interactive API docs**: http://localhost:8000/docs
-- **Alternative docs**: http://localhost:8000/redoc
+- **Interactive API docs**: http://localhost:8100/docs
+- **Alternative docs**: http://localhost:8100/redoc
 
 ## API Endpoints
 
@@ -139,7 +139,7 @@ These files are:
 
 ### Create a Player
 ```bash
-curl -X POST http://localhost:8000/players \
+curl -X POST http://localhost:8100/players \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Smith",
@@ -154,7 +154,7 @@ curl -X POST http://localhost:8000/players \
 
 ### Update Lineup
 ```bash
-curl -X PUT http://localhost:8000/lineup \
+curl -X PUT http://localhost:8100/lineup \
   -H "Content-Type: application/json" \
   -d '{
     "lineup": [
@@ -173,7 +173,7 @@ curl -X PUT http://localhost:8000/lineup \
 
 ### Get Lyra's Perspective
 ```bash
-curl -X POST http://localhost:8000/lyra/analyze \
+curl -X POST http://localhost:8100/lyra/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "lineup": [...],
@@ -332,6 +332,5 @@ Local-first, privacy-respecting, coach-empowering.
 For issues or questions:
 1. Check the troubleshooting section above
 2. Verify Ollama is running and lyra-coach model exists
-3. Check the API docs at http://localhost:8000/docs
+3. Check the API docs at http://localhost:8100/docs
 4. Review the logs in the terminal where the server is running
-

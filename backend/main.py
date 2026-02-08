@@ -57,6 +57,8 @@ app.add_middleware(
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:8123",
+        "http://127.0.0.1:8123",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -710,8 +712,8 @@ async def startup_event():
     print("=" * 60)
     print("🧢 Dugout Baseball Coaching API")
     print("=" * 60)
-    print("API running at: http://localhost:8000")
-    print("API docs at: http://localhost:8000/docs")
+    print("API running at: http://localhost:8100")
+    print("API docs at: http://localhost:8100/docs")
     print(f"Data directory: {storage.data_dir.absolute()}")
     
     # Check Ollama connection
@@ -732,5 +734,4 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
+    uvicorn.run(app, host="0.0.0.0", port=8100)

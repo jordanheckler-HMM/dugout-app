@@ -4,7 +4,7 @@ This document describes how the frontend has been connected to the local FastAPI
 
 ## Overview
 
-The frontend React/Vite application now communicates with the FastAPI backend running at `http://localhost:8000`. All data is persisted to the backend's JSON storage, and Lyra AI coaching insights are provided by the real Ollama integration.
+The frontend React/Vite application now communicates with the FastAPI backend running at `http://localhost:8100`. All data is persisted to the backend's JSON storage, and Lyra AI coaching insights are provided by the real Ollama integration.
 
 ## Architecture
 
@@ -13,7 +13,7 @@ Frontend (React/Vite)
   ↓
 API Client Layer (src/api/)
   ↓
-FastAPI Backend (localhost:8000)
+FastAPI Backend (localhost:8100)
   ↓
 JSON Storage (backend/data/)
 Ollama (lyra-coach model)
@@ -75,7 +75,7 @@ Ollama (lyra-coach model)
 The backend URL is configured in `src/api/client.ts`:
 
 ```typescript
-const API_BASE = "http://localhost:8000";
+const API_BASE = "http://localhost:8100";
 ```
 
 To change the backend URL, update this constant.
@@ -228,4 +228,3 @@ The frontend is now fully integrated with the backend:
 - ✅ Lyra uses real AI model for coaching insights
 - ✅ All data persists across browser refreshes
 - ✅ Local-first principles maintained throughout
-

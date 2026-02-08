@@ -15,7 +15,7 @@ def check_api_health():
     """Check if the API is running and healthy."""
     print("🔍 Checking API health...")
     try:
-        response = httpx.get("http://localhost:8000/health", timeout=5.0)
+        response = httpx.get("http://localhost:8100/health", timeout=5.0)
         if response.status_code == 200:
             data = response.json()
             print("  ✓ API is running")
@@ -28,7 +28,7 @@ def check_api_health():
             print(f"  ✗ API returned status code: {response.status_code}")
             return False
     except httpx.ConnectError:
-        print("  ✗ Cannot connect to API at http://localhost:8000")
+        print("  ✗ Cannot connect to API at http://localhost:8100")
         print("  Make sure the backend is running with: uvicorn main:app --reload")
         return False
     except Exception as e:
@@ -53,7 +53,7 @@ def test_player_endpoints():
         }
         
         response = httpx.post(
-            "http://localhost:8000/players",
+            "http://localhost:8100/players",
             json=player_data,
             timeout=5.0
         )
@@ -64,13 +64,13 @@ def test_player_endpoints():
             print(f"  ✓ Created test player (ID: {player_id})")
             
             # Get the player
-            response = httpx.get(f"http://localhost:8000/players/{player_id}")
+            response = httpx.get(f"http://localhost:8100/players/{player_id}")
             if response.status_code == 200:
                 print("  ✓ Retrieved player")
             
             # Update the player
             response = httpx.put(
-                f"http://localhost:8000/players/{player_id}",
+                f"http://localhost:8100/players/{player_id}",
                 json={"notes": "Updated notes"},
                 timeout=5.0
             )
@@ -78,7 +78,7 @@ def test_player_endpoints():
                 print("  ✓ Updated player")
             
             # Delete the player
-            response = httpx.delete(f"http://localhost:8000/players/{player_id}")
+            response = httpx.delete(f"http://localhost:8100/players/{player_id}")
             if response.status_code == 204:
                 print("  ✓ Deleted test player")
             
@@ -98,14 +98,14 @@ def test_lineup_endpoints():
     
     try:
         # Get lineup
-        response = httpx.get("http://localhost:8000/lineup", timeout=5.0)
+        response = httpx.get("http://localhost:8100/lineup", timeout=5.0)
         if response.status_code == 200:
             lineup = response.json()
             print(f"  ✓ Retrieved lineup ({len(lineup)} slots)")
             
             # Update lineup
             response = httpx.put(
-                "http://localhost:8000/lineup",
+                "http://localhost:8100/lineup",
                 json={"lineup": lineup},
                 timeout=5.0
             )
@@ -125,14 +125,14 @@ def test_field_endpoints():
     
     try:
         # Get field positions
-        response = httpx.get("http://localhost:8000/field", timeout=5.0)
+        response = httpx.get("http://localhost:8100/field", timeout=5.0)
         if response.status_code == 200:
             field = response.json()
             print(f"  ✓ Retrieved field positions ({len(field)} positions)")
             
             # Update field
             response = httpx.put(
-                "http://localhost:8000/field",
+                "http://localhost:8100/field",
                 json={"field_positions": field},
                 timeout=5.0
             )
@@ -152,7 +152,7 @@ def test_configuration_endpoints():
     
     try:
         # Get configurations
-        response = httpx.get("http://localhost:8000/configurations", timeout=5.0)
+        response = httpx.get("http://localhost:8100/configurations", timeout=5.0)
         if response.status_code == 200:
             configs = response.json()
             print(f"  ✓ Retrieved configurations ({len(configs)} saved)")
@@ -193,8 +193,8 @@ def main():
     if all_passed:
         print("\n✓ All tests passed! Backend is working correctly.")
         print("\nNext steps:")
-        print("  1. Connect your frontend to http://localhost:8000")
-        print("  2. Visit http://localhost:8000/docs for API documentation")
+        print("  1. Connect your frontend to http://localhost:8100")
+        print("  2. Visit http://localhost:8100/docs for API documentation")
         print("  3. Make sure Ollama is running for Lyra features")
         return 0
     else:
@@ -204,4 +204,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
