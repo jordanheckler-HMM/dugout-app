@@ -94,7 +94,8 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
 
   // Validate number
   const validateNumber = (value: number | undefined) => {
-    if (value === undefined) {
+    // Empty/undefined is valid (optional field)
+    if (value === undefined || value === null || (typeof value === 'number' && isNaN(value))) {
       setNumberError(null);
       return true;
     }
@@ -120,7 +121,8 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
   };
 
   const handleNumberChange = (value: string) => {
-    const num = value ? parseInt(value) : undefined;
+    // Handle empty string as undefined, not NaN
+    const num = value.trim() === '' ? undefined : parseInt(value);
     setNumber(num);
     validateNumber(num);
   };

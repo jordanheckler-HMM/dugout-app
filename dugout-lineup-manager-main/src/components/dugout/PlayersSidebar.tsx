@@ -5,14 +5,15 @@ import { PlayerEditDrawer } from './PlayerEditDrawer';
 import { Plus, Users, UserX, Archive } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface PlayersSidebarProps {
   players: Player[];
   lineup: LineupSlot[];
   fieldPositions: FieldPosition[];
-  onAddPlayer: (player: Omit<Player, 'id'>) => void;
-  onUpdatePlayer: (id: string, updates: Partial<Player>) => void;
-  onRemovePlayer: (id: string) => void;
+  onAddPlayer: (player: Omit<Player, 'id'>) => Promise<unknown>;
+  onUpdatePlayer: (id: string, updates: Partial<Player>) => Promise<void>;
+  onRemovePlayer: (id: string) => Promise<void>;
   onDragPlayer: (playerId: string) => void;
 }
 
@@ -68,7 +69,7 @@ export function PlayersSidebar({
       const aOrder = positionOrder[a.primaryPosition || ''] || 999;
       const bOrder = positionOrder[b.primaryPosition || ''] || 999;
       if (aOrder !== bOrder) return aOrder - bOrder;
-      
+
       // If same position, sort alphabetically by name
       return a.name.localeCompare(b.name);
     });
@@ -147,7 +148,7 @@ export function PlayersSidebar({
             groupOrder.map(groupName => {
               const groupPlayers = groupedPlayers[groupName];
               if (!groupPlayers || groupPlayers.length === 0) return null;
-              
+
               return (
                 <div key={groupName}>
                   {/* Group Header */}
@@ -156,7 +157,7 @@ export function PlayersSidebar({
                       {groupName}
                     </h3>
                   </div>
-                  
+
                   {/* Players in this group */}
                   <div className="space-y-2">
                     {groupPlayers.map(player => {
@@ -164,8 +165,12 @@ export function PlayersSidebar({
                       return (
                         <div
                           key={player.id}
-                          draggable
-                          onDragStart={() => onDragPlayer(player.id)}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', player.id);
+                            onDragPlayer(player.id);
+                          }}
                         >
                           <PlayerCard
                             player={player}
@@ -192,18 +197,33 @@ export function PlayersSidebar({
           setEditingPlayer(null);
           setIsAddingPlayer(false);
         }}
-        onSave={(data) => {
-          if (editingPlayer) {
-            onUpdatePlayer(editingPlayer.id, data);
-          } else {
-            onAddPlayer(data as Omit<Player, 'id'>);
+        onSave={async (data) => {
+          try {
+            if (editingPlayer) {
+              await onUpdatePlayer(editingPlayer.id, data);
+              toast.success('Player updated');
+            } else {
+              await onAddPlayer(data as Omit<Player, 'id'>);
+              toast.success('Player added');
+            }
+            setEditingPlayer(null);
+            setIsAddingPlayer(false);
+          } catch (error) {
+            console.error('Failed to save player:', error);
+            const message = error instanceof Error ? error.message : 'Failed to save player';
+            toast.error(message);
           }
-          setEditingPlayer(null);
-          setIsAddingPlayer(false);
         }}
-        onRemove={editingPlayer ? () => {
-          onRemovePlayer(editingPlayer.id);
-          setEditingPlayer(null);
+        onRemove={editingPlayer ? async () => {
+          try {
+            await onRemovePlayer(editingPlayer.id);
+            toast.success('Player removed');
+            setEditingPlayer(null);
+          } catch (error) {
+            console.error('Failed to remove player:', error);
+            const message = error instanceof Error ? error.message : 'Failed to remove player';
+            toast.error(message);
+          }
         } : undefined}
       />
     </div>

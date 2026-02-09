@@ -19,9 +19,9 @@ interface LineupCardProps {
 // Helper component to display player stats in lineup
 function PlayerStatsDisplay({ playerId }: { playerId: string }) {
   const { stats, loading } = usePlayerSeasonStats(playerId);
-  
+
   if (loading || !stats) return null;
-  
+
   // Show key batting stats
   if (stats.hitting.ab && stats.hitting.ab > 0) {
     return (
@@ -38,7 +38,7 @@ function PlayerStatsDisplay({ playerId }: { playerId: string }) {
       </div>
     );
   }
-  
+
   // Show key pitching stats
   if (stats.pitching.ip && stats.pitching.ip > 0) {
     return (
@@ -52,7 +52,7 @@ function PlayerStatsDisplay({ playerId }: { playerId: string }) {
       </div>
     );
   }
-  
+
   return null;
 }
 
@@ -68,18 +68,21 @@ export function LineupCard({
   draggingPlayerId,
   onDragPlayer
 }: LineupCardProps) {
-  const getPlayer = (id: string | null) => 
+  const getPlayer = (id: string | null) =>
     id ? players.find(p => p.id === id) : null;
 
   const handleDrop = (e: React.DragEvent, order: number) => {
     e.preventDefault();
-    if (draggingPlayerId) {
-      onAssign(draggingPlayerId, order, null);
+    // Try to get player ID from state first, then from dataTransfer as fallback
+    const playerId = draggingPlayerId || e.dataTransfer.getData('text/plain');
+    if (playerId) {
+      onAssign(playerId, order, null);
     }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const benchPlayers = benchPlayerIds
@@ -101,7 +104,7 @@ export function LineupCard({
         {lineup.map(slot => {
           const player = getPlayer(slot.playerId);
           const isPitcherSlot = !useDH && slot.order === 9;
-          
+
           return (
             <div
               key={slot.order}
@@ -121,10 +124,14 @@ export function LineupCard({
               {/* Player info */}
               <div className="flex-1 min-w-0">
                 {player ? (
-                  <div 
+                  <div
                     className="cursor-move"
-                    draggable
-                    onDragStart={() => onDragPlayer(player.id)}
+                    draggable={true}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', player.id);
+                      onDragPlayer(player.id);
+                    }}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <div className="flex items-center gap-2">
@@ -181,8 +188,9 @@ export function LineupCard({
           )}
           onDrop={e => {
             e.preventDefault();
-            if (draggingPlayerId) {
-              onAddToBench(draggingPlayerId);
+            const playerId = draggingPlayerId || e.dataTransfer.getData('text/plain');
+            if (playerId) {
+              onAddToBench(playerId);
             }
           }}
           onDragOver={handleDragOver}

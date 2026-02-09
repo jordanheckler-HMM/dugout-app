@@ -1,0 +1,42 @@
+[
+  {
+    "position": "P",
+    "player_id": null
+  },
+  {
+    "position": "C",
+    "player_id": "db3ccdd5-4f3c-4f5d-8517-13d3e257fc68"
+  },
+  {
+    "position": "1B",
+    "player_id": "b6296ac2-ac87-4d3e-b120-68221a5a3885"
+  },
+  {
+    "position": "2B",
+    "player_id": "ea08a5d5-0578-41ec-9f38-d11e91572347"
+  },
+  {
+    "position": "3B",
+    "player_id": "c578ec14-ad57-4fdd-91a4-d7db2c21666b"
+  },
+  {
+    "position": "SS",
+    "player_id": "1b84a15c-0df0-48df-8347-76dbf9ef0e7e"
+  },
+  {
+    "position": "LF",
+    "player_id": "9adfc805-cd0c-4a46-aab6-5565e4cca950"
+  },
+  {
+    "position": "CF",
+    "player_id": "ba96cde1-c92d-4fc7-9786-d0d7f8711da5"
+  },
+  {
+    "position": "RF",
+    "player_id": "8ae16cbc-6eb1-4ac2-9752-62137013a437"
+  },
+  {
+    "position": "DH",
+    "player_id": null
+  }
+]
