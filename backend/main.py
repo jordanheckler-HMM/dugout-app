@@ -13,6 +13,8 @@ Core principles:
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+import httpx
+import os
 import uuid
 from datetime import datetime
 
@@ -72,6 +74,14 @@ lyra = LyraClient(model_name="lyra-coach:latest")
 # Initialize Unified AI Service
 ai_config = AIConfig()
 ai_service = AIService(ai_config)
+
+
+def get_backend_port() -> int:
+    port_value = os.getenv("DUGOUT_BACKEND_PORT", "8100")
+    try:
+        return int(port_value)
+    except ValueError:
+        return 8100
 
 
 # --- Health check ---
@@ -704,16 +714,49 @@ def update_ai_settings(config: AIConfig):
     return ai_service.config
 
 
+@app.get("/settings/ai/ollama-models", tags=["Settings"])
+def get_ollama_models(ollama_url: str | None = None):
+    """
+    List available Ollama models for a given URL (or current AI config URL).
+    """
+    target_ollama_url = (ollama_url or ai_service.config.ollama_url).rstrip("/")
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get(f"{target_ollama_url}/api/tags")
+            response.raise_for_status()
+            data = response.json()
+    except Exception as error:
+        return {
+            "ollama_url": target_ollama_url,
+            "connected": False,
+            "models": [],
+            "error": str(error),
+        }
+
+    models = [
+        model.get("name")
+        for model in data.get("models", [])
+        if model.get("name")
+    ]
+    return {
+        "ollama_url": target_ollama_url,
+        "connected": True,
+        "models": models,
+    }
+
+
 # --- Application startup ---
 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup."""
+    port = get_backend_port()
     print("=" * 60)
     print("🧢 Dugout Baseball Coaching API")
     print("=" * 60)
-    print("API running at: http://localhost:8100")
-    print("API docs at: http://localhost:8100/docs")
+    print(f"API running at: http://localhost:{port}")
+    print(f"API docs at: http://localhost:{port}/docs")
     print(f"Data directory: {storage.data_dir.absolute()}")
     
     # Check Ollama connection
@@ -734,4 +777,4 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8100)
+    uvicorn.run(app, host="0.0.0.0", port=get_backend_port())

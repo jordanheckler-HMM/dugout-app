@@ -1,14 +1,18 @@
 #!/bin/bash
-# Provide permissions
-chmod +x scripts/build_sidecar.sh
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Create binaries directory
-mkdir -p src-tauri/binaries
+mkdir -p "$PROJECT_DIR/src-tauri/binaries"
 
 # Get absolute path to backend
-BACKEND_DIR="$(pwd)/../backend"
-TARGET_DIR="$(pwd)/src-tauri/binaries"
+BACKEND_DIR="$PROJECT_DIR/../backend"
+TARGET_DIR="$PROJECT_DIR/src-tauri/binaries"
 TARGET_TRIPLE="aarch64-apple-darwin"
+PYI_CACHE_DIR="$BACKEND_DIR/.pyinstaller-cache"
+
+mkdir -p "$PYI_CACHE_DIR"
 
 echo "Building backend from $BACKEND_DIR..."
 
@@ -21,7 +25,7 @@ cd "$BACKEND_DIR"
 # --onefile: Create a single executable
 # --name: Name of the executable
 # --clean: Clean PyInstaller cache
-pyinstaller --clean --noconfirm --onefile --name backend-sidecar main.py
+PYINSTALLER_CONFIG_DIR="$PYI_CACHE_DIR" pyinstaller --clean --noconfirm --onefile --name backend-sidecar main.py
 
 # Move to Tauri binaries folder with target triple
 echo "Moving binary to $TARGET_DIR/backend-sidecar-$TARGET_TRIPLE"

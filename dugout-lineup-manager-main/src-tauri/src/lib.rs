@@ -6,7 +6,11 @@ pub fn run() {
       #[cfg(desktop)]
       {
         use tauri_plugin_shell::ShellExt;
-        let sidecar_command = app.shell().sidecar("backend-sidecar").unwrap();
+        let sidecar_command = app
+          .shell()
+          .sidecar("backend-sidecar")
+          .unwrap()
+          .env("DUGOUT_BACKEND_PORT", "8100");
         let (mut _rx, _child) = sidecar_command.spawn().expect("Failed to spawn sidecar");
       }
 

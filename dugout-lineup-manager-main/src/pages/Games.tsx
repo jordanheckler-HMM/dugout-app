@@ -17,6 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,6 +62,7 @@ const Games = () => {
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<Game | null>(null);
+  const [gameToDelete, setGameToDelete] = useState<Game | null>(null);
   
   // Form state
   const [formDate, setFormDate] = useState('');
@@ -232,18 +243,20 @@ const Games = () => {
     }
   };
 
-  const handleDeleteGame = async (gameId: string, opponent: string) => {
-    if (!confirm(`Delete game vs ${opponent}? This will also delete all stats for this game.`)) {
+  const handleDeleteGame = async () => {
+    if (!gameToDelete) {
       return;
     }
 
     try {
-      await gamesApi.delete(gameId);
+      await gamesApi.delete(gameToDelete.id);
       toast.success('Game deleted successfully');
       loadGames();
     } catch (error) {
       console.error('Failed to delete game:', error);
       toast.error('Failed to delete game');
+    } finally {
+      setGameToDelete(null);
     }
   };
 
@@ -478,8 +491,7 @@ const Games = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onSelect={() => {
                           handleEditGame(game);
                         }}
                       >
@@ -489,7 +501,10 @@ const Games = () => {
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteGame(game.id, game.opponent);
+                          setGameToDelete(game);
+                        }}
+                        onSelect={() => {
+                          setGameToDelete(game);
                         }}
                         className="text-destructive focus:text-destructive"
                       >
@@ -572,9 +587,30 @@ const Games = () => {
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!gameToDelete} onOpenChange={(open) => !open && setGameToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete game?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {gameToDelete
+                ? `Delete game vs ${gameToDelete.opponent}? This will also delete all stats for this game.`
+                : 'Delete this game?'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteGame}
+            >
+              Delete Game
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
 
 export default Games;
-

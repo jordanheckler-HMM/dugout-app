@@ -235,21 +235,21 @@ User Question: ${userContent}
                       'rounded-lg px-3 py-2.5 text-sm shadow-sm',
                       message.role === 'user'
                         ? 'bg-lyra-muted text-lyra-foreground ml-auto max-w-[85%] border border-lyra-border'
-                        : 'glass-panel text-lyra-foreground'
+                        : 'bg-card/95 text-card-foreground border border-border/70 mr-auto max-w-[92%]'
                     )}
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
                         p: ({ children }) => <p className="mb-1 last:mb-0 leading-relaxed">{children}</p>,
-                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline">{children}</a>,
+                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>,
                         ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
                         ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
                         h1: ({ children }) => <h1 className="text-sm font-bold mt-2 mb-1">{children}</h1>,
                         h2: ({ children }) => <h2 className="text-sm font-bold mt-2 mb-1">{children}</h2>,
                         h3: ({ children }) => <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>,
-                        blockquote: ({ children }) => <blockquote className="border-l-2 border-gold/50 pl-2 italic my-2">{children}</blockquote>,
-                        code: ({ children }) => <code className="bg-black/20 rounded px-1 py-0.5 text-xs font-mono">{children}</code>,
+                        blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/40 pl-2 italic my-2">{children}</blockquote>,
+                        code: ({ children }) => <code className="bg-muted rounded px-1 py-0.5 text-xs font-mono text-foreground">{children}</code>,
                       }}
                     >
                       {message.content}

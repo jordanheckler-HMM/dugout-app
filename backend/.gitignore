@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 build/
+.pyinstaller-cache/
 develop-eggs/
 dist/
 downloads/
@@ -52,4 +53,3 @@ htmlcov/
 # Temporary files
 *.tmp
 *.bak
-

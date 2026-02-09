@@ -55,6 +55,13 @@ export interface LyraAnalysisResponse {
   timestamp: string;
 }
 
+export interface OllamaModelsResponse {
+  ollama_url: string;
+  connected: boolean;
+  models: string[];
+  error?: string;
+}
+
 export interface BackendGame {
   id: string;
   date: string;
@@ -390,6 +397,13 @@ export const settingsApi = {
       method: 'PUT',
       body: JSON.stringify(config),
     });
+  },
+
+  async getOllamaModels(ollamaUrl?: string): Promise<OllamaModelsResponse> {
+    const query = ollamaUrl
+      ? `?ollama_url=${encodeURIComponent(ollamaUrl)}`
+      : '';
+    return fetchApi<OllamaModelsResponse>(`/settings/ai/ollama-models${query}`);
   },
 };
 

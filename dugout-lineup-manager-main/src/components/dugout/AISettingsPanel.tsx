@@ -1,9 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Settings, Save, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAIStore } from '@/store/aiStore';
-import { settingsApi } from '@/api/client';
+import { healthApi, settingsApi } from '@/api/client';
 import { cn } from '@/lib/utils';
 import { AIProvider } from '@/types/ai';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from '@/components/ui/select';
 
 export function AISettingsPanel() {
     const {
@@ -20,6 +27,9 @@ export function AISettingsPanel() {
 
     const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [availableOllamaModels, setAvailableOllamaModels] = useState<string[]>([]);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [modelsError, setModelsError] = useState<string | null>(null);
 
     // Sync local state when store changes
     useEffect(() => {
@@ -30,6 +40,77 @@ export function AISettingsPanel() {
         setLocalAnthropicKey(anthropicKey || '');
         setLocalTheme(uiTheme);
     }, [provider, ollamaUrl, preferredModel, openaiKey, anthropicKey, uiTheme]);
+
+    const loadOllamaModels = useCallback(async (url: string) => {
+        const trimmedUrl = url.trim();
+        if (!trimmedUrl) {
+            setAvailableOllamaModels([]);
+            setModelsError('Enter an Ollama URL first.');
+            return;
+        }
+
+        setModelsLoading(true);
+        setModelsError(null);
+        try {
+            const response = await settingsApi.getOllamaModels(trimmedUrl);
+            setAvailableOllamaModels(response.models);
+
+            if (!response.connected) {
+                setModelsError(response.error || 'Could not connect to Ollama.');
+                return;
+            }
+
+            if (response.models.length === 0) {
+                setModelsError('No models found at this Ollama URL.');
+                return;
+            }
+
+            setLocalModel((currentModel) => (
+                response.models.includes(currentModel) ? currentModel : response.models[0]
+            ));
+        } catch (err) {
+            console.warn('Primary Ollama models endpoint unavailable, trying health fallback:', err);
+
+            try {
+                const health = await healthApi.check();
+                const fallbackModels = health.ollama_models || [];
+                setAvailableOllamaModels(fallbackModels);
+
+                if (!health.ollama_connected) {
+                    setModelsError('Could not connect to Ollama.');
+                    return;
+                }
+
+                if (fallbackModels.length === 0) {
+                    setModelsError('No models found in Ollama.');
+                    return;
+                }
+
+                setLocalModel((currentModel) => (
+                    fallbackModels.includes(currentModel) ? currentModel : fallbackModels[0]
+                ));
+                setModelsError(null);
+            } catch (fallbackErr) {
+                console.error('Failed to load Ollama models:', fallbackErr);
+                setAvailableOllamaModels([]);
+                setModelsError('Failed to load Ollama models.');
+            }
+        } finally {
+            setModelsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (localProvider !== 'ollama') {
+            return;
+        }
+
+        const timeoutId = setTimeout(() => {
+            void loadOllamaModels(localOllamaUrl);
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [localProvider, localOllamaUrl, loadOllamaModels]);
 
     const handleSave = async () => {
         setStatus('saving');
@@ -144,28 +225,67 @@ export function AISettingsPanel() {
                     </div>
                 )}
 
-                {/* Common Model Selection */}
-                <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Preferred Model</label>
-                    <div className="relative">
+                {localProvider === 'ollama' ? (
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium">Preferred Model</label>
+                            <button
+                                type="button"
+                                onClick={() => void loadOllamaModels(localOllamaUrl)}
+                                disabled={modelsLoading}
+                                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
+                            >
+                                <RefreshCw className={cn("w-3 h-3", modelsLoading && "animate-spin")} />
+                                Refresh
+                            </button>
+                        </div>
+                        {availableOllamaModels.length > 0 ? (
+                            <Select
+                                value={availableOllamaModels.includes(localModel) ? localModel : undefined}
+                                onValueChange={setLocalModel}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an Ollama model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableOllamaModels.map((modelName) => (
+                                        <SelectItem key={modelName} value={modelName}>
+                                            {modelName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <input
+                                type="text"
+                                value={localModel}
+                                onChange={(e) => setLocalModel(e.target.value)}
+                                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                placeholder="lyra-coach:latest"
+                            />
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            Select from installed Ollama models, or type one manually.
+                        </p>
+                        {modelsError && (
+                            <p className="text-xs text-destructive">{modelsError}</p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Preferred Model</label>
                         <input
                             type="text"
                             value={localModel}
                             onChange={(e) => setLocalModel(e.target.value)}
                             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            placeholder={
-                                localProvider === 'ollama' ? 'lyra-coach:latest' :
-                                    localProvider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet'
-                            }
+                            placeholder={localProvider === 'openai' ? 'gpt-4o' : 'claude-3-5-sonnet'}
                         />
-                        {/* Could add a refresh/list models button here later */}
+                        <p className="text-xs text-muted-foreground">
+                            Enter the model ID (e.g., gpt-4o, claude-3-sonnet).
+                        </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        {localProvider === 'ollama'
-                            ? 'Enter the name of your local Ollama model.'
-                            : 'Enter the model ID (e.g., gpt-4o, claude-3-sonnet).'}
-                    </p>
-                </div>
+                )}
             </div>
 
             {/* Theme Customization */}
