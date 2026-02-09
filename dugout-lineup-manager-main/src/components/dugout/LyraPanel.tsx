@@ -242,7 +242,17 @@ User Question: ${userContent}
                       remarkPlugins={[remarkGfm]}
                       components={{
                         p: ({ children }) => <p className="mb-1 last:mb-0 leading-relaxed">{children}</p>,
-                        a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>,
+                        a: ({ href, children }) => {
+                          const safeHref = href && (href.startsWith('https://') || href.startsWith('http://'))
+                            ? href
+                            : undefined;
+                          if (!safeHref) {
+                            return <span className="text-primary">{children}</span>;
+                          }
+                          return (
+                            <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>
+                          );
+                        },
                         ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
                         ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
                         h1: ({ children }) => <h1 className="text-sm font-bold mt-2 mb-1">{children}</h1>,

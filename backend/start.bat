@@ -46,4 +46,4 @@ echo ============================================================
 echo.
 
 REM Start the server
-uvicorn main:app --reload --host 0.0.0.0 --port 8100
+uvicorn main:app --reload --host 127.0.0.1 --port 8100

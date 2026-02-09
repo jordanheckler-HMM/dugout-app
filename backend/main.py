@@ -13,10 +13,17 @@ Core principles:
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+from urllib.parse import urlparse
 import httpx
+import logging
 import os
 import uuid
 from datetime import datetime
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
 
 from models import (
     Player,
@@ -41,7 +48,10 @@ from models import (
 from storage import JSONStorage
 from ollama_client import LyraClient
 from ai_service import AIService, AIConfig
+from ai_config import AIConfigResponse
 from fastapi.responses import StreamingResponse
+
+logger = logging.getLogger("dugout")
 
 
 # Initialize FastAPI app
@@ -50,6 +60,11 @@ app = FastAPI(
     description="Local-first API for baseball coaching and lineup management",
     version="1.0.0",
 )
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS for local frontend
 app.add_middleware(
@@ -82,6 +97,26 @@ def get_backend_port() -> int:
         return int(port_value)
     except ValueError:
         return 8100
+
+
+def validate_ollama_url(url: str) -> str:
+    """
+    Validate that an Ollama URL points to localhost only.
+    Prevents SSRF by rejecting non-local addresses.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ollama URL must use http or https scheme"
+        )
+    hostname = parsed.hostname
+    if hostname not in ("localhost", "127.0.0.1", "::1"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ollama URL must point to localhost (127.0.0.1 or localhost)"
+        )
+    return url
 
 
 # --- Health check ---
@@ -635,14 +670,15 @@ def get_player_season_stats(player_id: str):
 # --- Lyra (AI) endpoints ---
 
 @app.post("/lyra/analyze", response_model=LyraResponse, tags=["Lyra"])
-def analyze_with_lyra(request: LyraRequest):
+@limiter.limit("10/minute")
+def analyze_with_lyra(request: Request, lyra_request: LyraRequest):
     """
     Get coaching perspective from Lyra AI assistant.
-    
+
     Lyra provides observations, patterns, and considerations.
     Lyra does NOT make decisions or optimize lineups.
     The coach is always the decision-maker.
-    
+
     Send the current lineup, field positions, and optionally a specific question.
     Returns Lyra's advisory text.
     """
@@ -652,7 +688,7 @@ def analyze_with_lyra(request: LyraRequest):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cannot connect to Ollama. Make sure Ollama is running locally (try 'ollama serve')."
         )
-    
+
     # Check if lyra-coach model is available
     models = lyra.list_models()
     if "lyra-coach:latest" not in models:
@@ -660,56 +696,61 @@ def analyze_with_lyra(request: LyraRequest):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Lyra-coach model not found in Ollama. Please create it first."
         )
-    
+
     try:
         # Call Lyra for analysis
         response = lyra.analyze(
-            lineup=request.lineup,
-            field_positions=request.field_positions,
-            players=request.players,
-            question=request.question,
+            lineup=lyra_request.lineup,
+            field_positions=lyra_request.field_positions,
+            players=lyra_request.players,
+            question=lyra_request.question,
         )
         return response
-    
+
     except Exception as e:
+        logger.exception("Error communicating with Lyra")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error communicating with Lyra: {str(e)}"
+            detail="An error occurred while communicating with the AI service."
         )
 
 
 @app.post("/lyra/chat/stream", tags=["Lyra"])
-async def stream_chat_with_lyra(request: ChatRequest):
+@limiter.limit("20/minute")
+async def stream_chat_with_lyra(request: Request, chat_request: ChatRequest):
     """
     Stream a chat response from the configured AI provider.
-    
+
     Supports Ollama, OpenAI, and Anthropic via the unified AIService.
     Returns a server-sent events (SSE) stream of text chunks.
     """
     # Convert Pydantic models to dicts for the service
-    messages = [{"role": m.role, "content": m.content} for m in request.messages]
-    
+    messages = [{"role": m.role, "content": m.content} for m in chat_request.messages]
+
     return StreamingResponse(
-        ai_service.stream_chat(messages, request.model),
+        ai_service.stream_chat(messages, chat_request.model),
         media_type="text/event-stream"
     )
 
 
 # --- AI Settings endpoints ---
 
-@app.get("/settings/ai", response_model=AIConfig, tags=["Settings"])
+@app.get("/settings/ai", response_model=AIConfigResponse, tags=["Settings"])
 def get_ai_settings():
-    """Get current AI configuration."""
-    return ai_service.config
+    """Get current AI configuration (API keys redacted)."""
+    return AIConfigResponse.from_config(ai_service.config)
 
 
 @app.put("/settings/ai", response_model=AIConfig, tags=["Settings"])
 def update_ai_settings(config: AIConfig):
     """
     Update AI configuration.
-    
+
     Switches providers or updates API keys/URLs.
     """
+    # Validate ollama_url to prevent SSRF
+    validate_ollama_url(config.ollama_url)
+
     ai_service.update_config(config)
     return ai_service.config
 
@@ -721,17 +762,21 @@ def get_ollama_models(ollama_url: str | None = None):
     """
     target_ollama_url = (ollama_url or ai_service.config.ollama_url).rstrip("/")
 
+    # Validate URL to prevent SSRF
+    validate_ollama_url(target_ollama_url)
+
     try:
         with httpx.Client(timeout=5.0) as client:
             response = client.get(f"{target_ollama_url}/api/tags")
             response.raise_for_status()
             data = response.json()
     except Exception as error:
+        logger.exception("Failed to connect to Ollama at %s", target_ollama_url)
         return {
             "ollama_url": target_ollama_url,
             "connected": False,
             "models": [],
-            "error": str(error),
+            "error": "Could not connect to Ollama service.",
         }
 
     models = [
@@ -777,4 +822,4 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=get_backend_port())
+    uvicorn.run(app, host="127.0.0.1", port=get_backend_port())

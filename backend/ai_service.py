@@ -1,8 +1,11 @@
 import httpx
 import json
+import logging
 import os
 from typing import List, Dict, AsyncGenerator, Any
 from ai_config import AIConfig
+
+logger = logging.getLogger("dugout")
 
 
 class AIService:
@@ -93,7 +96,8 @@ class AIService:
                         except json.JSONDecodeError:
                             continue
         except Exception as e:
-            yield f"\n[AI Error: {str(e)}]"
+            logger.exception("Ollama streaming error")
+            yield "\n[AI Error: Connection failed. Check that Ollama is running.]"
 
     # --- OPENAI IMPLEMENTATION ---
     async def _stream_openai(self, messages: List[Dict[str, str]], model: str):
@@ -126,10 +130,11 @@ class AIService:
                                 delta = data["choices"][0]["delta"]
                                 if "content" in delta:
                                     yield delta["content"]
-                            except:
+                            except Exception:
                                 continue
         except Exception as e:
-            yield f"\n[OpenAI Error: {str(e)}]"
+            logger.exception("OpenAI streaming error")
+            yield "\n[AI Error: Failed to get response from OpenAI.]"
 
     # --- ANTHROPIC IMPLEMENTATION ---
     async def _stream_anthropic(self, messages: List[Dict[str, str]], model: str):
@@ -181,7 +186,8 @@ class AIService:
                             ):
                                 if "text" in data["delta"]:
                                     yield data["delta"]["text"]
-                        except:
+                        except Exception:
                             continue
         except Exception as e:
-            yield f"\n[Anthropic Error: {str(e)}]"
+            logger.exception("Anthropic streaming error")
+            yield "\n[AI Error: Failed to get response from Anthropic.]"

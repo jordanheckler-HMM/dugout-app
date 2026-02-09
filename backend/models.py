@@ -5,7 +5,9 @@ All models use Pydantic for validation and serialization.
 These models represent the core domain objects: players, lineups, field positions, and configurations.
 """
 
-from typing import Optional, List
+import re
+from datetime import date as dt_date
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field, field_validator
 
 # Constants for validation
@@ -15,6 +17,17 @@ VALID_THROWS = ['L', 'R']
 VALID_STATUS = ['active', 'inactive', 'archived']
 VALID_HOME_AWAY = ['home', 'away']
 VALID_RESULT = ['W', 'L', 'T']
+
+
+def validate_iso_date(v: str) -> str:
+    """Validate that a date string is in YYYY-MM-DD format and is a real date."""
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+        raise ValueError('Date must be in YYYY-MM-DD format')
+    try:
+        dt_date.fromisoformat(v)
+    except ValueError:
+        raise ValueError('Invalid date value')
+    return v
 
 
 class Player(BaseModel):
@@ -131,16 +144,16 @@ class ChatMessage(BaseModel):
     """
     Single message in a chat conversation.
     """
-    role: str
-    content: str
+    role: Literal["user", "assistant", "system"]
+    content: str = Field(..., max_length=10000)
 
 
 class ChatRequest(BaseModel):
     """
     Request for AI chat completion/streaming.
     """
-    messages: List[ChatMessage]
-    model: Optional[str] = None
+    messages: List[ChatMessage] = Field(..., max_length=50)
+    model: Optional[str] = Field(None, max_length=100)
 
 
 class PlayerCreate(BaseModel):
@@ -284,36 +297,36 @@ class GameStats(BaseModel):
     """
     game_id: str
     player_id: str
-    
+
     # Hitting stats
-    ab: Optional[int] = 0  # At bats
-    r: Optional[int] = 0   # Runs scored
-    h: Optional[int] = 0   # Hits
-    doubles: Optional[int] = 0  # 2B
-    triples: Optional[int] = 0  # 3B
-    hr: Optional[int] = 0  # Home runs
-    rbi: Optional[int] = 0  # Runs batted in
-    bb: Optional[int] = 0  # Walks
-    so: Optional[int] = 0  # Strikeouts
-    sb: Optional[int] = 0  # Stolen bases
-    cs: Optional[int] = 0  # Caught stealing
-    
+    ab: Optional[int] = Field(0, ge=0)  # At bats
+    r: Optional[int] = Field(0, ge=0)   # Runs scored
+    h: Optional[int] = Field(0, ge=0)   # Hits
+    doubles: Optional[int] = Field(0, ge=0)  # 2B
+    triples: Optional[int] = Field(0, ge=0)  # 3B
+    hr: Optional[int] = Field(0, ge=0)  # Home runs
+    rbi: Optional[int] = Field(0, ge=0)  # Runs batted in
+    bb: Optional[int] = Field(0, ge=0)  # Walks
+    so: Optional[int] = Field(0, ge=0)  # Strikeouts
+    sb: Optional[int] = Field(0, ge=0)  # Stolen bases
+    cs: Optional[int] = Field(0, ge=0)  # Caught stealing
+
     # Pitching stats
-    ip: Optional[float] = 0.0  # Innings pitched
-    h_allowed: Optional[int] = 0  # Hits allowed
-    r_allowed: Optional[int] = 0  # Runs allowed
-    er: Optional[int] = 0  # Earned runs
-    bb_allowed: Optional[int] = 0  # Walks allowed
-    k: Optional[int] = 0  # Strikeouts (pitching)
-    pitches: Optional[int] = 0  # Pitch count
-    
+    ip: Optional[float] = Field(0.0, ge=0.0)  # Innings pitched
+    h_allowed: Optional[int] = Field(0, ge=0)  # Hits allowed
+    r_allowed: Optional[int] = Field(0, ge=0)  # Runs allowed
+    er: Optional[int] = Field(0, ge=0)  # Earned runs
+    bb_allowed: Optional[int] = Field(0, ge=0)  # Walks allowed
+    k: Optional[int] = Field(0, ge=0)  # Strikeouts (pitching)
+    pitches: Optional[int] = Field(0, ge=0)  # Pitch count
+
     # Fielding stats
-    po: Optional[int] = 0  # Putouts
-    a: Optional[int] = 0   # Assists
-    e: Optional[int] = 0   # Errors
-    
+    po: Optional[int] = Field(0, ge=0)  # Putouts
+    a: Optional[int] = Field(0, ge=0)   # Assists
+    e: Optional[int] = Field(0, ge=0)   # Errors
+
     position_played: Optional[List[str]] = []
-    innings_played: Optional[float] = 0.0
+    innings_played: Optional[float] = Field(0.0, ge=0.0)
 
 
 class Game(BaseModel):
@@ -357,6 +370,11 @@ class GameCreate(BaseModel):
             raise ValueError(f'home_away must be one of: {", ".join(VALID_HOME_AWAY)}')
         return v
     
+    @field_validator('date')
+    @classmethod
+    def validate_date(cls, v):
+        return validate_iso_date(v)
+
     @field_validator('result')
     @classmethod
     def validate_result(cls, v):
@@ -391,6 +409,13 @@ class GameUpdate(BaseModel):
             raise ValueError(f'home_away must be one of: {", ".join(VALID_HOME_AWAY)}')
         return v
     
+    @field_validator('date')
+    @classmethod
+    def validate_date(cls, v):
+        if v is not None:
+            return validate_iso_date(v)
+        return v
+
     @field_validator('result')
     @classmethod
     def validate_result(cls, v):
@@ -402,29 +427,29 @@ class GameUpdate(BaseModel):
 class GameStatsCreate(BaseModel):
     """Request model for creating/updating game stats for a player."""
     player_id: str
-    ab: Optional[int] = 0
-    r: Optional[int] = 0
-    h: Optional[int] = 0
-    doubles: Optional[int] = 0
-    triples: Optional[int] = 0
-    hr: Optional[int] = 0
-    rbi: Optional[int] = 0
-    bb: Optional[int] = 0
-    so: Optional[int] = 0
-    sb: Optional[int] = 0
-    cs: Optional[int] = 0
-    ip: Optional[float] = 0.0
-    h_allowed: Optional[int] = 0
-    r_allowed: Optional[int] = 0
-    er: Optional[int] = 0
-    bb_allowed: Optional[int] = 0
-    k: Optional[int] = 0
-    pitches: Optional[int] = 0
-    po: Optional[int] = 0
-    a: Optional[int] = 0
-    e: Optional[int] = 0
+    ab: Optional[int] = Field(0, ge=0)
+    r: Optional[int] = Field(0, ge=0)
+    h: Optional[int] = Field(0, ge=0)
+    doubles: Optional[int] = Field(0, ge=0)
+    triples: Optional[int] = Field(0, ge=0)
+    hr: Optional[int] = Field(0, ge=0)
+    rbi: Optional[int] = Field(0, ge=0)
+    bb: Optional[int] = Field(0, ge=0)
+    so: Optional[int] = Field(0, ge=0)
+    sb: Optional[int] = Field(0, ge=0)
+    cs: Optional[int] = Field(0, ge=0)
+    ip: Optional[float] = Field(0.0, ge=0.0)
+    h_allowed: Optional[int] = Field(0, ge=0)
+    r_allowed: Optional[int] = Field(0, ge=0)
+    er: Optional[int] = Field(0, ge=0)
+    bb_allowed: Optional[int] = Field(0, ge=0)
+    k: Optional[int] = Field(0, ge=0)
+    pitches: Optional[int] = Field(0, ge=0)
+    po: Optional[int] = Field(0, ge=0)
+    a: Optional[int] = Field(0, ge=0)
+    e: Optional[int] = Field(0, ge=0)
     position_played: Optional[List[str]] = []
-    innings_played: Optional[float] = 0.0
+    innings_played: Optional[float] = Field(0.0, ge=0.0)
 
 
 class BulkGameStatsCreate(BaseModel):

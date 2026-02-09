@@ -13,6 +13,7 @@ Design principles:
 
 import json
 import os
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from models import Player, LineupSlot, FieldPosition, Configuration, Game, GameStats
@@ -32,13 +33,14 @@ class JSONStorage:
     def __init__(self, data_dir: str = "data"):
         """
         Initialize storage with a data directory.
-        
+
         Args:
             data_dir: Path to directory for JSON files (default: "data")
         """
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        
+        self._lock = threading.Lock()
+
         # Initialize files with default data if they don't exist
         self._initialize_storage()
     
@@ -101,24 +103,25 @@ class JSONStorage:
     
     def save(self, filename: str, data: Any):
         """
-        Save data to a JSON file atomically.
-        
+        Save data to a JSON file atomically, with thread safety.
+
         Uses a temporary file and rename to ensure atomic writes
         (prevents corruption if write is interrupted).
-        
+
         Args:
             filename: Name of the JSON file
             data: Data to serialize (must be JSON-serializable)
         """
-        file_path = self._file_path(filename)
-        temp_path = self._file_path(f"{filename}.tmp")
-        
-        # Write to temp file
-        with open(temp_path, 'w') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        
-        # Atomic rename
-        temp_path.replace(file_path)
+        with self._lock:
+            file_path = self._file_path(filename)
+            temp_path = self._file_path(f"{filename}.tmp")
+
+            # Write to temp file
+            with open(temp_path, 'w') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            # Atomic rename
+            temp_path.replace(file_path)
     
     # --- Player operations ---
     
