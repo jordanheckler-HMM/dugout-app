@@ -82,71 +82,71 @@ export function GameCanvas({
   return (
     <div className="h-full flex flex-col bg-background paper-texture">
       {/* Top controls */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         {/* View toggle */}
-        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+        <div className="flex items-center gap-1 p-0.5 bg-muted/60 rounded-md border border-border">
           <button
             onClick={() => setViewMode('lineup')}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border',
               viewMode === 'lineup'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-foreground border-border'
+                : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border/60'
             )}
           >
-            <List className="w-4 h-4" />
+            <List className="w-3.5 h-3.5" />
             Lineup
           </button>
           <button
             onClick={() => setViewMode('field')}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border',
               viewMode === 'field'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-card text-foreground border-border'
+                : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border/60'
             )}
           >
-            <Map className="w-4 h-4" />
+            <Map className="w-3.5 h-3.5" />
             Field
           </button>
         </div>
 
         {/* DH toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate('/games')}
-            className="gap-2"
+            className="gap-1.5"
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5" />
             Games & Stats
           </Button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Switch
               id="dh-toggle"
               checked={useDH}
               onCheckedChange={onToggleDH}
             />
-            <Label htmlFor="dh-toggle" className="text-sm font-medium cursor-pointer">
+            <Label htmlFor="dh-toggle" className="text-xs font-medium cursor-pointer">
               Use DH
             </Label>
           </div>
 
           {/* Config actions */}
-          <div className="flex items-center gap-1 ml-4">
+          <div className="flex items-center gap-0.5 ml-2 pl-2 border-l border-border">
             <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
               <DialogTrigger asChild>
-                <button className="p-2 rounded-md hover:bg-muted transition-colors" title="Save configuration">
-                  <Save className="w-4 h-4 text-muted-foreground" />
+                <button className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Save configuration">
+                  <Save className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[360px]">
+              <DialogContent className="sm:max-w-[320px]">
                 <DialogHeader>
-                  <DialogTitle>Save Configuration</DialogTitle>
+                  <DialogTitle className="text-sm">Save Configuration</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 pt-4">
+                <div className="space-y-3 pt-2">
                   <Input
                     value={configName}
                     onChange={e => setConfigName(e.target.value)}
@@ -155,7 +155,7 @@ export function GameCanvas({
                   <button
                     onClick={handleSave}
                     disabled={!configName.trim()}
-                    className="w-full py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="w-full py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                   >
                     Save
                   </button>
@@ -166,15 +166,15 @@ export function GameCanvas({
             {savedConfigs.length > 0 && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <button className="p-2 rounded-md hover:bg-muted transition-colors" title="Load configuration">
-                    <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                  <button className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Load configuration">
+                    <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[360px]">
+                <DialogContent className="sm:max-w-[320px]">
                   <DialogHeader>
-                    <DialogTitle>Load Configuration</DialogTitle>
+                    <DialogTitle className="text-sm">Load Configuration</DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-2 pt-4">
+                  <div className="space-y-1.5 pt-2">
                     {savedConfigs.map(config => (
                       <div
                         key={config.id}
@@ -182,10 +182,10 @@ export function GameCanvas({
                       >
                         <button
                           onClick={() => onLoadConfig(config.id)}
-                          className="flex-1 text-left px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+                          className="flex-1 text-left px-2.5 py-1.5 rounded border border-transparent hover:border-border hover:bg-muted/40 transition-colors"
                         >
-                          <span className="font-medium">{config.name}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
+                          <span className="text-xs font-medium">{config.name}</span>
+                          <span className="text-[10px] text-muted-foreground ml-1.5">
                             {config.useDH ? 'DH' : 'No DH'}
                           </span>
                         </button>
@@ -194,10 +194,10 @@ export function GameCanvas({
                             e.stopPropagation();
                             onDeleteConfig(config.id);
                           }}
-                          className="p-2 rounded-md hover:bg-destructive/10 text-destructive transition-colors"
+                          className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive transition-colors"
                           title="Delete configuration"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -212,18 +212,18 @@ export function GameCanvas({
                 await onClearLineup();
                 await onClearField();
               }}
-              className="p-2 rounded-md hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors"
               title="Clear lineup & field"
             >
-              <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-lg mx-auto">
+      <div className="flex-1 overflow-auto px-3 py-2.5">
+        <div className="max-w-[560px] mx-auto">
           {viewMode === 'lineup' ? (
             <LineupCard
               lineup={lineup}
@@ -252,9 +252,9 @@ export function GameCanvas({
 
       {/* Current config indicator */}
       {currentConfigName && (
-        <div className="px-4 py-2 border-t border-border bg-muted/30">
-          <span className="text-xs text-muted-foreground">
-            Configuration: <span className="font-medium text-foreground">{currentConfigName}</span>
+        <div className="px-3 py-1 border-t border-border bg-muted/20">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-[0.08em]">
+            Configuration: <span className="font-medium normal-case tracking-normal text-foreground">{currentConfigName}</span>
           </span>
         </div>
       )}

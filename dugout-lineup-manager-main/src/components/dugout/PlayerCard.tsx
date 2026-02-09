@@ -75,9 +75,9 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
   return (
     <div
       className={cn(
-        'group relative bg-card rounded-lg border p-3 transition-all duration-150',
-        'hover:shadow-card cursor-grab active:cursor-grabbing',
-        isDragging && 'shadow-card-hover opacity-90 scale-[1.02]',
+        'group relative bg-card rounded-md border px-2.5 py-2 transition-colors duration-150',
+        'cursor-grab active:cursor-grabbing hover:bg-muted/20',
+        isDragging && 'opacity-90',
         player.status === 'archived' && 'opacity-60',
         isActive ? 'border-l-4 border-l-primary bg-muted/20' : 'border-border'
       )}
@@ -85,22 +85,22 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
       onDragStart={onDragStart}
     >
       {/* Drag handle */}
-      <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-50 transition-opacity">
-        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      <div className="absolute left-0.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-50 transition-opacity">
+        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
       </div>
 
-      <div className="flex items-start gap-3 pl-3">
+      <div className="flex items-start gap-2.5 pl-2">
         {/* Number badge */}
         {player.number && (
-          <div className="flex-shrink-0 w-8 h-8 rounded bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center">
+          <div className="flex-shrink-0 w-7 h-7 rounded border border-primary/30 bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center justify-center">
             {player.number}
           </div>
         )}
 
         <div className="flex-1 min-w-0">
           {/* Name and status */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-foreground truncate">{player.name}</span>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-xs font-medium text-foreground truncate">{player.name}</span>
             {player.status !== 'active' && (
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide', statusColors[player.status])}>
                 {player.status}
@@ -109,27 +109,27 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
           </div>
 
           {/* Positions and handedness */}
-          <div className="flex items-center gap-2 mb-2">
-            <div className="flex gap-1">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="flex gap-0.5">
               {/* Primary position with green badge */}
-              <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-green-500 text-white">
+              <span className="px-1 py-0.5 rounded text-[10px] font-medium bg-green-500 text-white">
                 {player.primaryPosition}
               </span>
               {/* Secondary positions with yellow badges */}
               {player.secondaryPositions?.map(pos => (
-                <span key={pos} className="px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-500 text-white">
+                <span key={pos} className="px-1 py-0.5 rounded text-[10px] font-medium bg-yellow-500 text-white">
                   {pos}
                 </span>
               ))}
             </div>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground">
               B: {player.bats} / T: {player.throws}
             </span>
           </div>
 
           {/* Stats */}
           {!compact && finalStats.length > 0 && (
-            <div className="flex gap-3 text-xs">
+            <div className="flex gap-2 text-[10px]">
               {finalStats.map(([key, value]) => (
                 <div key={key} className="flex items-center gap-1">
                   <span className="text-foreground/70">{getStatLabel(key)}</span>
@@ -142,7 +142,7 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
           )}
           
           {!compact && statsLoading && (
-            <div className="text-xs text-muted-foreground">
+            <div className="text-[10px] text-muted-foreground">
               Loading stats...
             </div>
           )}
@@ -155,9 +155,9 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
               e.stopPropagation();
               onEdit();
             }}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all"
+            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all"
           >
-            <MoreVertical className="w-4 h-4 text-muted-foreground" />
+            <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
       </div>

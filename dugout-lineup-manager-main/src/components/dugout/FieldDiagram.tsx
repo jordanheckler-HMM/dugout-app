@@ -59,20 +59,20 @@ export function FieldDiagram({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {/* Position Chemistry Legend */}
-      <div className="flex items-center justify-center gap-6 p-3 bg-muted/30 rounded-lg border border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-green-500 ring-2 ring-green-400" />
-          <span className="text-xs font-medium">Primary Position</span>
+      <div className="flex items-center justify-center gap-4 p-2 bg-muted/20 rounded-md border border-border">
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-green-500 ring-1 ring-green-400" />
+          <span className="text-[10px] font-medium">Primary</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-yellow-500 ring-2 ring-yellow-400" />
-          <span className="text-xs font-medium">Secondary Position</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-yellow-500 ring-1 ring-yellow-400" />
+          <span className="text-[10px] font-medium">Secondary</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-red-500 ring-2 ring-red-400" />
-          <span className="text-xs font-medium">Out of Position</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-4 h-4 rounded-full bg-red-500 ring-1 ring-red-400" />
+          <span className="text-[10px] font-medium">Out of Position</span>
         </div>
       </div>
 
@@ -149,15 +149,15 @@ export function FieldDiagram({
                   <div
                     className="flex flex-col items-center cursor-move"
                     draggable={true}
-                    onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = 'move';
-                      e.dataTransfer.setData('text/plain', player.id);
-                      onDragPlayer(player.id);
-                    }}
-                  >
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', player.id);
+                        onDragPlayer(player.id);
+                      }}
+                    >
                     <div className="relative">
                       <div className={cn(
-                        'w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shadow-md text-white transition-all',
+                        'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border border-black/20 text-white transition-all',
                         getPositionFitStyles(getPositionFit(player, fp.position))
                       )}>
                         {player.number || player.name.charAt(0)}
@@ -165,26 +165,26 @@ export function FieldDiagram({
 
                       {/* Out of position warning badge */}
                       {getPositionFit(player, fp.position) === 'out-of-position' && (
-                        <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-red-600 border-2 border-white flex items-center justify-center animate-pulse">
+                        <div className="absolute -top-1 -left-1 w-3.5 h-3.5 rounded-full bg-red-600 border border-white flex items-center justify-center animate-pulse">
                           <span className="text-[10px] font-bold text-white">!</span>
                         </div>
                       )}
 
                       <button
                         onClick={() => onRemove(fp.position)}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-2.5 h-2.5" />
                       </button>
                     </div>
-                    <span className="mt-1 px-1.5 py-0.5 bg-card/90 rounded text-[10px] font-medium shadow-sm">
+                    <span className="mt-0.5 px-1.5 py-0.5 bg-card/90 rounded border border-border text-[10px] font-medium">
                       {player.name.split(' ').pop()}
                     </span>
                   </div>
                 ) : (
                   <div
                     className={cn(
-                      'w-9 h-9 rounded-full border-2 border-dashed flex items-center justify-center text-xs font-semibold transition-colors',
+                      'w-8 h-8 rounded-full border border-dashed flex items-center justify-center text-[10px] font-semibold transition-colors',
                       draggingPlayerId
                         ? 'border-primary bg-primary/20 text-primary'
                         : 'border-primary/40 bg-card/80 text-muted-foreground'

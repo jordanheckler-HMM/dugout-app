@@ -6,15 +6,15 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
   
   .glass-dark {
-    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl;
+    @apply bg-black/40 backdrop-blur-xl border border-white/10;
   }
   
   .glass-panel {
-    @apply bg-card/80 backdrop-blur-sm border shadow-sm;
+    @apply bg-card/80 backdrop-blur-sm border;
   }
 }
 
@@ -127,13 +127,21 @@
 }
 
 @layer base {
+  html {
+    font-size: 14px;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased text-[13px] leading-[1.35];
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply leading-tight;
   }
 
   /* Paper texture overlay */
@@ -147,15 +155,11 @@
 @layer utilities {
   /* Subtle shadows for cards */
   .shadow-card {
-    box-shadow: 
-      0 1px 3px hsl(var(--primary) / 0.06),
-      0 4px 12px hsl(var(--primary) / 0.04);
+    box-shadow: none;
   }
 
   .shadow-card-hover {
-    box-shadow: 
-      0 2px 6px hsl(var(--primary) / 0.08),
-      0 8px 24px hsl(var(--primary) / 0.06);
+    box-shadow: none;
   }
 
   /* Field diagram shadows */

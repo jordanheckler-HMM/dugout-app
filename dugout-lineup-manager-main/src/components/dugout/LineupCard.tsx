@@ -90,11 +90,11 @@ export function LineupCard({
     .filter(Boolean) as Player[];
 
   return (
-    <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+    <div className="bg-card rounded-md border border-border overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 bg-primary text-primary-foreground">
-        <h3 className="font-semibold">Batting Order</h3>
-        <p className="text-xs text-primary-foreground/70 mt-0.5">
+      <div className="px-3 py-2 bg-muted/40 border-b border-border">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-foreground/80">Batting Order</h3>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
           {useDH ? 'Designated Hitter active' : 'Pitcher bats'}
         </p>
       </div>
@@ -109,7 +109,7 @@ export function LineupCard({
             <div
               key={slot.order}
               className={cn(
-                'lineup-slot flex items-center gap-3 px-4 py-3',
+                'lineup-slot flex items-center gap-2 px-3 py-2',
                 !player && 'lineup-slot-empty',
                 draggingPlayerId && 'drag-over'
               )}
@@ -117,7 +117,7 @@ export function LineupCard({
               onDragOver={handleDragOver}
             >
               {/* Order number */}
-              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-semibold text-muted-foreground">
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
                 {slot.order}
               </div>
 
@@ -132,17 +132,17 @@ export function LineupCard({
                       e.dataTransfer.setData('text/plain', player.id);
                       onDragPlayer(player.id);
                     }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="flex items-center gap-2">
+                    >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="flex items-center gap-1.5">
                         {player.number && (
-                          <span className="text-xs font-medium text-muted-foreground">
+                          <span className="text-[10px] font-medium text-muted-foreground">
                             #{player.number}
                           </span>
                         )}
-                        <span className="font-medium text-foreground">{player.name}</span>
+                        <span className="text-xs font-medium text-foreground">{player.name}</span>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5">
                         {player.positions.slice(0, 2).map(pos => (
                           <span key={pos} className="position-badge text-[10px]">
                             {pos}
@@ -154,7 +154,7 @@ export function LineupCard({
                     <PlayerStatsDisplay playerId={player.id} />
                   </div>
                 ) : (
-                  <span className="text-sm text-muted-foreground/50 italic">
+                  <span className="text-xs text-muted-foreground/50 italic">
                     {isPitcherSlot ? 'Pitcher' : 'Drag player here'}
                   </span>
                 )}
@@ -164,9 +164,9 @@ export function LineupCard({
               {player && (
                 <button
                   onClick={() => onRemove(slot.order)}
-                  className="p-1 rounded hover:bg-muted transition-colors"
+                  className="p-0.5 rounded hover:bg-muted transition-colors"
                 >
-                  <X className="w-4 h-4 text-muted-foreground" />
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               )}
             </div>
@@ -176,14 +176,14 @@ export function LineupCard({
 
       {/* Bench section */}
       <div className="border-t border-border">
-        <div className="px-4 py-2 bg-muted/50">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+        <div className="px-3 py-1.5 bg-muted/40">
+          <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.1em]">
             Bench
           </h4>
         </div>
         <div
           className={cn(
-            'min-h-[60px] p-3',
+            'min-h-[44px] p-2',
             draggingPlayerId && 'bg-accent/30'
           )}
           onDrop={e => {
@@ -196,15 +196,15 @@ export function LineupCard({
           onDragOver={handleDragOver}
         >
           {benchPlayers.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 text-center py-2 italic">
+            <p className="text-[10px] text-muted-foreground/50 text-center py-1 italic">
               Drag players here for bench
             </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {benchPlayers.map(player => (
                 <div
                   key={player.id}
-                  className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded text-sm"
+                  className="flex items-center gap-1 px-1.5 py-0.5 bg-muted rounded text-xs"
                 >
                   <User className="w-3 h-3 text-muted-foreground" />
                   <span>{player.name}</span>

@@ -102,26 +102,26 @@ export function PlayersSidebar({
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Players</h2>
+      <div className="px-3 py-2 border-b border-sidebar-border">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold tracking-tight">Players</h2>
           <button
             onClick={() => setIsAddingPlayer(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             Add
           </button>
         </div>
 
         {/* Status filters */}
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           {filterButtons.map(btn => (
             <button
               key={btn.value}
               onClick={() => setStatusFilter(btn.value)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors',
+                'flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors',
                 statusFilter === btn.value
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
@@ -139,10 +139,10 @@ export function PlayersSidebar({
 
       {/* Player list */}
       <ScrollArea className="flex-1">
-        <div className="p-3 space-y-4">
+        <div className="p-2 space-y-3">
           {filteredPlayers.length === 0 ? (
-            <div className="text-center py-8 text-sidebar-foreground/50">
-              <p className="text-sm">No {statusFilter} players</p>
+            <div className="text-center py-6 text-sidebar-foreground/50">
+              <p className="text-xs">No {statusFilter} players</p>
             </div>
           ) : (
             groupOrder.map(groupName => {
@@ -152,8 +152,8 @@ export function PlayersSidebar({
               return (
                 <div key={groupName}>
                   {/* Group Header */}
-                  <div className="sticky top-0 bg-sidebar z-10 px-2 py-1.5 mb-2">
-                    <h3 className="text-xs font-semibold text-sidebar-foreground/60 uppercase tracking-wide">
+                  <div className="sticky top-0 bg-sidebar z-10 px-2 py-1 mb-1.5">
+                    <h3 className="text-[10px] font-semibold text-sidebar-foreground/60 uppercase tracking-[0.12em]">
                       {groupName}
                     </h3>
                   </div>

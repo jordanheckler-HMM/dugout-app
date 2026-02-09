@@ -267,59 +267,59 @@ const GameStats = () => {
       
       <div className="h-screen flex flex-col bg-background">
         {/* Header */}
-        <div className="border-b border-border px-6 py-4">
+        <div className="border-b border-border px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-4 mb-2">
+              <div className="flex items-center gap-2.5 mb-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate('/games')}
-                  className="gap-2"
+                  className="gap-1.5"
                 >
-                  <ArrowLeft className="w-4 h-4" />
+                  <ArrowLeft className="w-3.5 h-3.5" />
                   Back
                 </Button>
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-base font-semibold text-foreground tracking-tight">
                   vs {game.opponent}
                 </h1>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {formatDate(game.date)} • {game.homeAway === 'home' ? 'Home' : 'Away'}
               </p>
             </div>
             
-            <Button onClick={handleSave} disabled={saving} className="gap-2">
-              <Save className="w-4 h-4" />
+            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+              <Save className="w-3.5 h-3.5" />
               {saving ? 'Saving...' : 'Save Stats'}
             </Button>
           </div>
         </div>
 
         {/* Stats entry */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto p-3">
+          <div className="max-w-6xl mx-auto space-y-2.5">
             {players.map(player => (
-              <Card key={player.id} className="p-4">
-                <div className="flex items-center justify-between mb-4">
+              <Card key={player.id} className="p-2.5">
+                <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="text-lg font-semibold">
+                    <h3 className="text-sm font-semibold">
                       {player.number && `#${player.number} `}{player.name}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {player.positions.join(', ')} • Bats: {player.bats} / Throws: {player.throws}
                     </p>
                   </div>
                 </div>
 
                 <Tabs defaultValue="hitting" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsList className="grid w-full grid-cols-2 mb-2">
                     <TabsTrigger value="hitting">Hitting</TabsTrigger>
                     <TabsTrigger value="pitching">Pitching</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="hitting" className="space-y-4">
-                    <div className="grid grid-cols-4 gap-3">
+                  <TabsContent value="hitting" className="space-y-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <div>
                         <Label htmlFor={`${player.id}-ab`} className="text-xs">AB</Label>
                         <Input
@@ -328,7 +328,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.ab || 0}
                           onChange={(e) => updateStat(player.id, 'ab', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -339,7 +339,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.r || 0}
                           onChange={(e) => updateStat(player.id, 'r', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -350,7 +350,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.h || 0}
                           onChange={(e) => updateStat(player.id, 'h', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -361,7 +361,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.doubles || 0}
                           onChange={(e) => updateStat(player.id, 'doubles', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -372,7 +372,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.triples || 0}
                           onChange={(e) => updateStat(player.id, 'triples', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -383,7 +383,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.hr || 0}
                           onChange={(e) => updateStat(player.id, 'hr', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -394,7 +394,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.rbi || 0}
                           onChange={(e) => updateStat(player.id, 'rbi', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -405,7 +405,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.bb || 0}
                           onChange={(e) => updateStat(player.id, 'bb', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -416,7 +416,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.so || 0}
                           onChange={(e) => updateStat(player.id, 'so', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -427,7 +427,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.sb || 0}
                           onChange={(e) => updateStat(player.id, 'sb', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -438,14 +438,14 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.cs || 0}
                           onChange={(e) => updateStat(player.id, 'cs', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                     </div>
                   </TabsContent>
 
-                  <TabsContent value="pitching" className="space-y-4">
-                    <div className="grid grid-cols-4 gap-3">
+                  <TabsContent value="pitching" className="space-y-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <div className="col-span-2">
                         <Label className="text-xs">IP (Innings + Outs)</Label>
                         <div className="flex gap-2">
@@ -461,7 +461,7 @@ const GameStats = () => {
                                 const { outs } = parseInningsPitched(stats[player.id]?.ip || 0);
                                 updateInningsPitched(player.id, fullInnings, outs);
                               }}
-                              className="h-9"
+                              className="h-7"
                             />
                           </div>
                           <div className="w-20">
@@ -473,7 +473,7 @@ const GameStats = () => {
                                 const { fullInnings } = parseInningsPitched(stats[player.id]?.ip || 0);
                                 updateInningsPitched(player.id, fullInnings, outs);
                               }}
-                              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
                             >
                               <option value="0">0 outs</option>
                               <option value="1">1 out</option>
@@ -490,7 +490,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.h_allowed || 0}
                           onChange={(e) => updateStat(player.id, 'h_allowed', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -501,7 +501,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.r_allowed || 0}
                           onChange={(e) => updateStat(player.id, 'r_allowed', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -512,7 +512,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.er || 0}
                           onChange={(e) => updateStat(player.id, 'er', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -523,7 +523,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.bb_allowed || 0}
                           onChange={(e) => updateStat(player.id, 'bb_allowed', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -534,7 +534,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.k || 0}
                           onChange={(e) => updateStat(player.id, 'k', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                       <div>
@@ -545,7 +545,7 @@ const GameStats = () => {
                           min="0"
                           value={stats[player.id]?.pitches || 0}
                           onChange={(e) => updateStat(player.id, 'pitches', e.target.value)}
-                          className="h-9"
+                          className="h-7"
                         />
                       </div>
                     </div>

@@ -163,32 +163,32 @@ User Question: ${userContent}
   return (
     <div className="h-full flex flex-col bg-lyra text-lyra-foreground">
       {/* Header */}
-      <div className="p-4 border-b border-lyra-border flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-lyra-border flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-gold" />
-            <h2 className="text-lg font-semibold">Lyra</h2>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Sparkles className="w-3.5 h-3.5 text-gold" />
+            <h2 className="text-sm font-semibold tracking-tight">Lyra</h2>
             <span className="text-[10px] bg-lyra-border/50 px-1.5 py-0.5 rounded text-lyra-foreground/60">
               {provider}
             </span>
           </div>
-          <p className="text-xs text-lyra-foreground/60">
+          <p className="text-[10px] text-lyra-foreground/60">
             Ask for perspective. You make the decisions.
           </p>
         </div>
         <button
           onClick={() => setShowSettings(!showSettings)}
           className={cn(
-            "p-2 rounded-md transition-colors hover:bg-lyra-muted",
+            "p-1.5 rounded-md transition-colors hover:bg-lyra-muted",
             showSettings && "bg-lyra-muted text-gold"
           )}
         >
-          <SettingsIcon className="w-5 h-5" />
+          <SettingsIcon className="w-4 h-4" />
         </button>
       </div>
 
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-destructive text-xs flex items-center gap-2">
+        <div className="px-3 py-1.5 bg-destructive/10 border-b border-destructive/20 text-destructive text-[10px] flex items-center gap-1.5">
           <AlertCircle className="w-3 h-3" />
           {error}
         </div>
@@ -200,21 +200,21 @@ User Question: ${userContent}
         </ScrollArea>
       ) : (
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-4">
+          <div className="p-3 space-y-2.5">
             {messages.length === 0 ? (
-              <div className="space-y-4">
-                <p className="text-sm text-lyra-foreground/50 text-center py-4">
+              <div className="space-y-2">
+                <p className="text-xs text-lyra-foreground/50 text-center py-2">
                   Ask me about your lineup, positioning, or strategy considerations.
                 </p>
-                <div className="space-y-2">
-                  <p className="text-xs text-lyra-foreground/40 uppercase tracking-wide">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] text-lyra-foreground/40 uppercase tracking-[0.12em]">
                     Try asking:
                   </p>
                   {examplePrompts.map((prompt, i) => (
                     <button
                       key={i}
                       onClick={() => handleExampleClick(prompt)}
-                      className="block w-full text-left px-3 py-2 rounded-lg text-sm text-lyra-foreground/70 bg-lyra-muted/30 hover:bg-lyra-muted/50 transition-colors"
+                      className="block w-full text-left px-2.5 py-1.5 rounded border border-lyra-border text-xs text-lyra-foreground/70 bg-lyra-muted/20 hover:bg-lyra-muted/40 transition-colors"
                     >
                       "{prompt}"
                     </button>
@@ -227,21 +227,21 @@ User Question: ${userContent}
                   key={message.id}
                   className={cn(
                     'animate-fade-in group',
-                    message.role === 'user' ? 'ml-4' : 'mr-4'
+                    message.role === 'user' ? 'ml-2' : 'mr-2'
                   )}
                 >
                   <div
                     className={cn(
-                      'rounded-lg px-3 py-2.5 text-sm shadow-sm',
+                      'rounded-md px-2.5 py-1.5 text-xs leading-snug border',
                       message.role === 'user'
-                        ? 'bg-lyra-muted text-lyra-foreground ml-auto max-w-[85%] border border-lyra-border'
-                        : 'bg-card/95 text-card-foreground border border-border/70 mr-auto max-w-[92%]'
+                        ? 'bg-lyra-muted/60 text-lyra-foreground ml-auto max-w-[86%] border-lyra-border'
+                        : 'bg-card/95 text-card-foreground mr-auto max-w-[92%] border-border/70'
                     )}
                   >
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        p: ({ children }) => <p className="mb-1 last:mb-0 leading-relaxed">{children}</p>,
+                        p: ({ children }) => <p className="mb-1 last:mb-0 leading-snug">{children}</p>,
                         a: ({ href, children }) => {
                           const safeHref = href && (href.startsWith('https://') || href.startsWith('http://'))
                             ? href
@@ -253,19 +253,19 @@ User Question: ${userContent}
                             <a href={safeHref} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>
                           );
                         },
-                        ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
-                        h1: ({ children }) => <h1 className="text-sm font-bold mt-2 mb-1">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-sm font-bold mt-2 mb-1">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-sm font-bold mt-2 mb-1">{children}</h3>,
-                        blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/40 pl-2 italic my-2">{children}</blockquote>,
-                        code: ({ children }) => <code className="bg-muted rounded px-1 py-0.5 text-xs font-mono text-foreground">{children}</code>,
+                        ul: ({ children }) => <ul className="list-disc pl-3.5 mb-1.5 space-y-0.5">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-3.5 mb-1.5 space-y-0.5">{children}</ol>,
+                        h1: ({ children }) => <h1 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h3>,
+                        blockquote: ({ children }) => <blockquote className="border-l border-primary/40 pl-2 italic my-1.5">{children}</blockquote>,
+                        code: ({ children }) => <code className="bg-muted rounded px-1 py-0.5 text-[11px] font-mono text-foreground">{children}</code>,
                       }}
                     >
                       {message.content}
                     </ReactMarkdown>
                   </div>
-                  <p className="text-[10px] text-lyra-foreground/40 mt-1 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-[10px] text-lyra-foreground/40 mt-0.5 px-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -274,9 +274,9 @@ User Question: ${userContent}
             <div ref={scrollRef} />
 
             {isTyping && (
-              <div className="flex items-center gap-1 px-3 py-2 text-lyra-foreground/50">
+              <div className="flex items-center gap-1 px-2.5 py-1 text-lyra-foreground/50">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span className="text-xs">Thinking...</span>
+                <span className="text-[10px]">Thinking...</span>
               </div>
             )}
           </div>
@@ -284,7 +284,7 @@ User Question: ${userContent}
       )}
 
       {/* Input */}
-      <div className="p-3 border-t border-lyra-border">
+      <div className="p-2 border-t border-lyra-border">
         <div className="flex items-end gap-2">
           <textarea
             value={input}
@@ -292,14 +292,14 @@ User Question: ${userContent}
             onKeyDown={handleKeyDown}
             placeholder="Ask about your lineup or strategy..."
             rows={2}
-            className="flex-1 resize-none rounded-lg bg-lyra-muted/50 border border-lyra-border px-3 py-2 text-sm text-lyra-foreground placeholder:text-lyra-foreground/40 focus:outline-none focus:ring-1 focus:ring-gold/50"
+            className="flex-1 resize-none rounded-md bg-lyra-muted/30 border border-lyra-border px-2.5 py-1.5 text-xs text-lyra-foreground placeholder:text-lyra-foreground/40 focus:outline-none focus:ring-1 focus:ring-gold/50"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isTyping}
-            className="p-2.5 rounded-lg bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-md border border-gold/30 bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

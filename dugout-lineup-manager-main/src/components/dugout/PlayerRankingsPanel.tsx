@@ -112,7 +112,7 @@ function useAllPlayerStats(players: Player[]) {
 function StatBadge({ label, value, isGood }: { label: string; value: string; isGood?: boolean }) {
   return (
     <div className={cn(
-      "px-2 py-1 rounded text-xs font-medium",
+      "px-1.5 py-0.5 rounded border text-[10px] font-medium",
       isGood === true && "bg-green-500/20 text-green-400",
       isGood === false && "bg-amber-500/20 text-amber-400",
       isGood === undefined && "bg-lyra-muted/50 text-lyra-foreground/70"
@@ -136,25 +136,25 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
         />
       ))}
       {/* Header */}
-      <div className="p-4 border-b border-lyra-border">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp className="w-4 h-4 text-gold" />
-          <h2 className="text-lg font-semibold">Top Performers</h2>
+      <div className="px-3 py-2 border-b border-lyra-border">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <TrendingUp className="w-3.5 h-3.5 text-gold" />
+          <h2 className="text-sm font-semibold tracking-tight">Top Performers</h2>
         </div>
-        <p className="text-xs text-lyra-foreground/60">
+        <p className="text-[10px] text-lyra-foreground/60">
           Season leaders and team statistics
         </p>
       </div>
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="p-3 space-y-4">
           
           {/* Top Hitters Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-gold" />
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-lyra-foreground/80">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-gold" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lyra-foreground/80">
                 Hitting Leaders
               </h3>
             </div>
@@ -164,27 +164,27 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                 {topHitters.map((p, idx) => (
                   <div
                     key={p.player.id}
-                    className="bg-lyra-muted/30 rounded-lg p-3 border border-lyra-border/50"
+                    className="bg-lyra-muted/20 rounded-md p-2 border border-lyra-border/50"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-gold">
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base font-bold text-gold">
                           {idx + 1}
                         </span>
                         <div>
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-xs">
                             {p.player.name}
                           </div>
-                          <div className="text-xs text-lyra-foreground/50">
+                          <div className="text-[10px] text-lyra-foreground/50">
                             #{p.player.number || '—'} • {p.player.primaryPosition}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-gold">
+                        <div className="text-lg font-bold text-gold">
                           {p.avg?.toFixed(3) || '.000'}
                         </div>
-                        <div className="text-xs text-lyra-foreground/50">
+                        <div className="text-[10px] text-lyra-foreground/50">
                           AVG
                         </div>
                       </div>
@@ -207,17 +207,17 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-lyra-foreground/40 text-center py-4">
+              <p className="text-xs text-lyra-foreground/40 text-center py-3">
                 No hitting stats available yet
               </p>
             )}
           </div>
 
           {/* Top Pitchers Section */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-gold" />
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-lyra-foreground/80">
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-gold" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lyra-foreground/80">
                 Pitching Leaders
               </h3>
             </div>
@@ -227,27 +227,27 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                 {topPitchers.map((p, idx) => (
                   <div
                     key={p.player.id}
-                    className="bg-lyra-muted/30 rounded-lg p-3 border border-lyra-border/50"
+                    className="bg-lyra-muted/20 rounded-md p-2 border border-lyra-border/50"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-gold">
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base font-bold text-gold">
                           {idx + 1}
                         </span>
                         <div>
-                          <div className="font-medium text-sm">
+                          <div className="font-medium text-xs">
                             {p.player.name}
                           </div>
-                          <div className="text-xs text-lyra-foreground/50">
+                          <div className="text-[10px] text-lyra-foreground/50">
                             #{p.player.number || '—'} • {p.player.primaryPosition}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-gold">
+                        <div className="text-lg font-bold text-gold">
                           {p.era?.toFixed(2) || '0.00'}
                         </div>
-                        <div className="text-xs text-lyra-foreground/50">
+                        <div className="text-[10px] text-lyra-foreground/50">
                           ERA
                         </div>
                       </div>
@@ -270,42 +270,42 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-lyra-foreground/40 text-center py-4">
+              <p className="text-xs text-lyra-foreground/40 text-center py-3">
                 No pitching stats available yet
               </p>
             )}
           </div>
 
           {/* Team Stats Section */}
-          <div className="space-y-3 pt-2 border-t border-lyra-border">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gold" />
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-lyra-foreground/80">
+          <div className="space-y-2 pt-2 border-t border-lyra-border">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-gold" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-lyra-foreground/80">
                 Team Summary
               </h3>
             </div>
             
-            <div className="bg-lyra-muted/30 rounded-lg p-4 border border-lyra-border/50">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-lyra-muted/20 rounded-md p-2.5 border border-lyra-border/50">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-xs text-lyra-foreground/50 mb-1">
+                  <div className="text-[10px] text-lyra-foreground/50 mb-0.5">
                     Team AVG
                   </div>
-                  <div className="text-xl font-bold text-lyra-foreground">
+                  <div className="text-base font-semibold text-lyra-foreground">
                     {teamAvg > 0 ? teamAvg.toFixed(3) : '.000'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-lyra-foreground/50 mb-1">
+                  <div className="text-[10px] text-lyra-foreground/50 mb-0.5">
                     Team ERA
                   </div>
-                  <div className="text-xl font-bold text-lyra-foreground">
+                  <div className="text-base font-semibold text-lyra-foreground">
                     {teamEra > 0 ? teamEra.toFixed(2) : '0.00'}
                   </div>
                 </div>
               </div>
-              <div className="mt-3 pt-3 border-t border-lyra-border/30">
-                <div className="text-xs text-lyra-foreground/50">
+              <div className="mt-2 pt-2 border-t border-lyra-border/30">
+                <div className="text-[10px] text-lyra-foreground/50">
                   {totalPlayers} {totalPlayers === 1 ? 'player' : 'players'} with stats
                 </div>
               </div>
