@@ -99,6 +99,8 @@
           "path": "$APPLOCALDATA/**"
         }
       ]
-    }
+    },
+    "updater:default",
+    "process:allow-restart"
   ]
 }
