@@ -86,7 +86,8 @@ app.add_middleware(
 )
 
 # Initialize storage and Ollama client
-storage = JSONStorage(data_dir="data")
+data_dir = os.getenv("DUGOUT_DATA_DIR", "data")
+storage = JSONStorage(data_dir=data_dir)
 lyra = LyraClient(model_name="lyra-coach:latest")
 
 # Initialize Unified AI Service
