@@ -8,6 +8,8 @@ interface AIState extends AIConfig {
     ecosystemInitialized: boolean;
     availableModels: ModelEntry[];
     setProvider: (provider: AIConfig['provider']) => void;
+    setMode: (mode: AIConfig['mode']) => void;
+    setCloudProvider: (provider: AIConfig['cloudProvider']) => void;
     updateSettings: (settings: Partial<AIConfig>) => void;
     setTheme: (theme: 'solid' | 'glass') => void;
     initializeEcosystem: () => Promise<void>;
@@ -17,7 +19,9 @@ interface AIState extends AIConfig {
 export const useAIStore = create<AIState>()(
     persist(
         (set, get) => ({
+            mode: 'local',
             provider: 'ollama',
+            cloudProvider: 'openai',
             ollamaUrl: 'http://localhost:11434',
             preferredModel: 'lyra-coach:latest',
             openaiKey: '',
@@ -27,7 +31,22 @@ export const useAIStore = create<AIState>()(
             availableModels: [],
 
             setProvider: (provider) => set({ provider }),
-            updateSettings: (settings) => set((state) => ({ ...state, ...settings })),
+            setMode: (mode) => set((state) => {
+                const newProvider = mode === 'local' ? 'ollama' : state.cloudProvider;
+                return { mode, provider: newProvider };
+            }),
+            setCloudProvider: (cloudProvider) => set((state) => {
+                const newProvider = state.mode === 'cloud' ? cloudProvider : state.provider;
+                return { cloudProvider, provider: newProvider };
+            }),
+            updateSettings: (settings) => set((state) => {
+                const newState = { ...state, ...settings };
+                // If mode changed, ensure provider matches
+                if (settings.mode) {
+                    newState.provider = settings.mode === 'local' ? 'ollama' : newState.cloudProvider;
+                }
+                return newState;
+            }),
             setTheme: (theme) => set({ uiTheme: theme }),
 
             /**
@@ -107,7 +126,9 @@ export const useAIStore = create<AIState>()(
             name: 'dugout-ai-settings',
             // Don't persist ecosystem-specific runtime state
             partialize: (state) => ({
+                mode: state.mode,
                 provider: state.provider,
+                cloudProvider: state.cloudProvider,
                 ollamaUrl: state.ollamaUrl,
                 preferredModel: state.preferredModel,
                 openaiKey: state.openaiKey,

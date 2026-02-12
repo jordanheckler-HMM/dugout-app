@@ -1,4 +1,4 @@
-import { LineupSlot, Player, Position } from '@/types/player';
+import { LineupSlot, Player, Position, FieldPosition } from '@/types/player';
 import { cn } from '@/lib/utils';
 import { User, X } from 'lucide-react';
 import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
@@ -6,6 +6,7 @@ import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
 interface LineupCardProps {
   lineup: LineupSlot[];
   players: Player[];
+  fieldPositions: FieldPosition[];
   useDH: boolean;
   benchPlayerIds: string[];
   onAssign: (playerId: string, order: number, position: Position | null) => void;
@@ -59,6 +60,7 @@ function PlayerStatsDisplay({ playerId }: { playerId: string }) {
 export function LineupCard({
   lineup,
   players,
+  fieldPositions,
   useDH,
   benchPlayerIds,
   onAssign,
@@ -132,7 +134,7 @@ export function LineupCard({
                       e.dataTransfer.setData('text/plain', player.id);
                       onDragPlayer(player.id);
                     }}
-                    >
+                  >
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <div className="flex items-center gap-1.5">
                         {player.number && (
@@ -143,11 +145,18 @@ export function LineupCard({
                         <span className="text-xs font-medium text-foreground">{player.name}</span>
                       </div>
                       <div className="flex gap-0.5">
-                        {player.positions.slice(0, 2).map(pos => (
-                          <span key={pos} className="position-badge text-[10px]">
-                            {pos}
-                          </span>
-                        ))}
+                        {/* Show only the current field position */}
+                        {(() => {
+                          const fieldPos = fieldPositions.find(fp => fp.playerId === player.id);
+                          if (fieldPos) {
+                            return (
+                              <span key={fieldPos.position} className="position-badge text-[10px]">
+                                {fieldPos.position}
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                     {/* Stats row */}

@@ -3,7 +3,7 @@ import { Settings, Save, CheckCircle, AlertCircle, RefreshCw } from 'lucide-reac
 import { useAIStore } from '@/store/aiStore';
 import { healthApi, settingsApi } from '@/api/client';
 import { cn } from '@/lib/utils';
-import { AIProvider } from '@/types/ai';
+import { AIProvider, AIConfig, AIMode } from '@/types/ai';
 import {
     Select,
     SelectContent,
@@ -14,11 +14,13 @@ import {
 
 export function AISettingsPanel() {
     const {
-        provider, ollamaUrl, preferredModel, openaiKey, anthropicKey, uiTheme,
+        mode, provider, cloudProvider, ollamaUrl, preferredModel, openaiKey, anthropicKey, uiTheme,
         updateSettings, setTheme
     } = useAIStore();
 
+    const [localMode, setLocalMode] = useState<AIConfig['mode']>(mode);
     const [localProvider, setLocalProvider] = useState<AIProvider>(provider);
+    const [localCloudProvider, setLocalCloudProvider] = useState<AIConfig['cloudProvider']>(cloudProvider);
     const [localOllamaUrl, setLocalOllamaUrl] = useState(ollamaUrl);
     const [localModel, setLocalModel] = useState(preferredModel);
     const [localOpenaiKey, setLocalOpenaiKey] = useState(openaiKey || '');
@@ -33,13 +35,15 @@ export function AISettingsPanel() {
 
     // Sync local state when store changes
     useEffect(() => {
+        setLocalMode(mode);
         setLocalProvider(provider);
+        setLocalCloudProvider(cloudProvider);
         setLocalOllamaUrl(ollamaUrl);
         setLocalModel(preferredModel);
         setLocalOpenaiKey(openaiKey || '');
         setLocalAnthropicKey(anthropicKey || '');
         setLocalTheme(uiTheme);
-    }, [provider, ollamaUrl, preferredModel, openaiKey, anthropicKey, uiTheme]);
+    }, [mode, provider, cloudProvider, ollamaUrl, preferredModel, openaiKey, anthropicKey, uiTheme]);
 
     const loadOllamaModels = useCallback(async (url: string) => {
         const trimmedUrl = url.trim();
@@ -118,7 +122,9 @@ export function AISettingsPanel() {
         try {
             // Update store (frontend persistence)
             updateSettings({
+                mode: localMode,
                 provider: localProvider,
+                cloudProvider: localCloudProvider,
                 ollamaUrl: localOllamaUrl,
                 preferredModel: localModel,
                 openaiKey: localOpenaiKey,
@@ -128,7 +134,9 @@ export function AISettingsPanel() {
 
             // Update backend (API config)
             await settingsApi.updateAISettings({
+                mode: localMode,
                 provider: localProvider,
+                cloudProvider: localCloudProvider,
                 ollamaUrl: localOllamaUrl,
                 preferredModel: localModel,
                 openaiKey: localOpenaiKey,
@@ -151,26 +159,71 @@ export function AISettingsPanel() {
                 <h2 className="text-lg font-semibold">AI Settings</h2>
             </div>
 
-            {/* Provider Selection */}
+            {/* AI Mode Toggle */}
             <div className="space-y-3">
-                <label className="text-sm font-medium">AI Provider</label>
-                <div className="grid grid-cols-3 gap-2">
-                    {(['ollama', 'openai', 'anthropic'] as AIProvider[]).map((p) => (
-                        <button
-                            key={p}
-                            onClick={() => setLocalProvider(p)}
-                            className={cn(
-                                "px-3 py-2 text-sm font-medium rounded-md border transition-all",
-                                localProvider === p
-                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                    : "bg-background text-muted-foreground hover:bg-muted/50"
-                            )}
-                        >
-                            {p.charAt(0).toUpperCase() + p.slice(1)}
-                        </button>
-                    ))}
+                <label className="text-sm font-medium">AI Deployment Mode</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-muted/30 rounded-lg border border-border/50">
+                    <button
+                        onClick={() => {
+                            setLocalMode('local');
+                            setLocalProvider('ollama');
+                        }}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2",
+                            localMode === 'local'
+                                ? "bg-card text-foreground shadow-sm border border-border"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Local (Private)
+                    </button>
+                    <button
+                        onClick={() => {
+                            setLocalMode('cloud');
+                            setLocalProvider(localCloudProvider);
+                        }}
+                        className={cn(
+                            "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center gap-2",
+                            localMode === 'cloud'
+                                ? "bg-card text-foreground shadow-sm border border-border"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Cloud (External)
+                    </button>
                 </div>
+                <p className="text-[10px] text-muted-foreground px-1">
+                    {localMode === 'local'
+                        ? "Processes data on your machine using Ollama. High privacy, no API costs."
+                        : "Uses specialized cloud models. Requires API keys. Higher performance."}
+                </p>
             </div>
+
+            {/* Cloud Provider Selection - Only shown in Cloud mode */}
+            {localMode === 'cloud' && (
+                <div className="space-y-3 animate-slide-down">
+                    <label className="text-sm font-medium">Cloud Provider</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        {(['openai', 'anthropic'] as const).map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => {
+                                    setLocalCloudProvider(p);
+                                    setLocalProvider(p);
+                                }}
+                                className={cn(
+                                    "px-3 py-2 text-sm font-medium rounded-md border transition-all",
+                                    localCloudProvider === p
+                                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                        : "bg-background text-muted-foreground hover:bg-muted/50"
+                                )}
+                            >
+                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Provider Details */}
             <div className="space-y-4 pt-2">

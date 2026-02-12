@@ -122,7 +122,7 @@ export function GameCanvas({
             <Calendar className="w-3.5 h-3.5" />
             Games & Stats
           </Button>
-          
+
           <div className="flex items-center gap-1.5">
             <Switch
               id="dh-toggle"
@@ -228,6 +228,7 @@ export function GameCanvas({
             <LineupCard
               lineup={lineup}
               players={players}
+              fieldPositions={fieldPositions}
               useDH={useDH}
               benchPlayerIds={benchPlayerIds}
               onAssign={onAssignToLineup}

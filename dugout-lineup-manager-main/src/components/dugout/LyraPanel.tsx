@@ -45,7 +45,7 @@ const examplePrompts = [
 ];
 
 export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
-  const { provider, preferredModel } = useAIStore();
+  const { mode, provider, preferredModel } = useAIStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -168,9 +168,19 @@ User Question: ${userContent}
           <div className="flex items-center gap-1.5 mb-0.5">
             <Sparkles className="w-3.5 h-3.5 text-gold" />
             <h2 className="text-sm font-semibold tracking-tight">Lyra</h2>
-            <span className="text-[10px] bg-lyra-border/50 px-1.5 py-0.5 rounded text-lyra-foreground/60">
-              {provider}
-            </span>
+            <div className="flex gap-1 items-center">
+              <span className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded-full border uppercase tracking-wider font-bold",
+                mode === 'local'
+                  ? "bg-green-500/10 text-green-500 border-green-500/20"
+                  : "bg-blue-500/10 text-blue-500 border-blue-500/20"
+              )}>
+                {mode}
+              </span>
+              <span className="text-[10px] bg-lyra-border/30 px-1.5 py-0.5 rounded text-lyra-foreground/70">
+                {provider}
+              </span>
+            </div>
           </div>
           <p className="text-[10px] text-lyra-foreground/60">
             Ask for perspective. You make the decisions.
