@@ -2,6 +2,11 @@ name: Release Tauri App
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing git tag to release (example: v0.1.1)"
+        required: true
+        type: string
   push:
     tags:
       - "v*"
@@ -19,6 +24,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      - name: Resolve release tag
+        id: release_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+
+          if [[ ! "$TAG" =~ ^v[0-9] ]]; then
+            echo "❌ Invalid release tag: '$TAG'. Use a semver tag like v0.1.1."
+            exit 1
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Using release tag: $TAG"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,6 +70,21 @@ jobs:
       - name: Build backend sidecar
         run: npm run build:sidecar
 
+      - name: Validate signing secrets
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "❌ Missing TAURI_SIGNING_PRIVATE_KEY secret."
+            exit 1
+          fi
+
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
+            echo "⚠️ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is empty."
+            echo "If your key has no password, this is okay. Otherwise set the secret."
+          fi
+
       - name: Build and publish Tauri release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -54,8 +93,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: dugout-lineup-manager-main
-          tagName: ${{ github.ref_name }}
-          releaseName: Dugout ${{ github.ref_name }}
+          tagName: ${{ steps.release_tag.outputs.tag }}
+          releaseName: Dugout ${{ steps.release_tag.outputs.tag }}
           releaseBody: Automated release for Dugout.
           releaseDraft: false
           prerelease: false

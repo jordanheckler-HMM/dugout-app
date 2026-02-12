@@ -86,11 +86,12 @@ export function useAppUpdater() {
                         contentLength = event.data.contentLength ?? 0;
                         console.log(`[Updater] Downloading ${contentLength} bytes`);
                         break;
-                    case 'Progress':
+                    case 'Progress': {
                         downloaded += event.data.chunkLength;
                         const pct = contentLength > 0 ? Math.round((downloaded / contentLength) * 100) : 0;
                         setStatus((prev) => ({ ...prev, progress: pct }));
                         break;
+                    }
                     case 'Finished':
                         setStatus((prev) => ({ ...prev, progress: 100 }));
                         console.log('[Updater] Download complete');
