@@ -106,8 +106,10 @@ export function PlayersSidebar({
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold tracking-tight">Players</h2>
           <button
+            type="button"
             onClick={() => setIsAddingPlayer(true)}
-            className="mr-8 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors"
+            aria-label="Add player"
+            className="mr-8 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1"
           >
             <Plus className="w-3.5 h-3.5" />
             Add
@@ -119,9 +121,12 @@ export function PlayersSidebar({
           {filterButtons.map(btn => (
             <button
               key={btn.value}
+              type="button"
               onClick={() => setStatusFilter(btn.value)}
+              aria-label={`Show ${btn.label.toLowerCase()} players`}
+              aria-pressed={statusFilter === btn.value}
               className={cn(
-                'flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors',
+                'flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
                 statusFilter === btn.value
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'

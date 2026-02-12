@@ -8,7 +8,7 @@ on:
 
 jobs:
   frontend:
-    name: Frontend Lint
+    name: Frontend Checks
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,6 +29,9 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+      - name: Run frontend tests
+        run: npm run test:run
 
   backend:
     name: Backend Tests

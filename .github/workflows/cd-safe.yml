@@ -1,0 +1,48 @@
+name: CD (Safe Manual Placeholder)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify-build:
+    name: Verify Build Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dugout-lineup-manager-main/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: dugout-lineup-manager-main
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: dugout-lineup-manager-main
+        run: npm run build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+  deploy:
+    name: Deploy (Disabled By Default)
+    needs: verify-build
+    runs-on: ubuntu-latest
+    if: ${{ false }}
+    steps:
+      - name: Deployment placeholder
+        run: |
+          echo "TODO: Add deployment steps with environment protection and manual approval."

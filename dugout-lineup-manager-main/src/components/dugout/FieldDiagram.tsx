@@ -171,8 +171,10 @@ export function FieldDiagram({
                       )}
 
                       <button
+                        type="button"
                         onClick={() => onRemove(fp.position)}
-                        className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        aria-label={`Remove ${player.name} from ${fp.position}`}
+                        className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-10 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { LineupSlot, Player, Position, FieldPosition } from '@/types/player';
 import { cn } from '@/lib/utils';
 import { User, X } from 'lucide-react';
@@ -70,8 +71,19 @@ export function LineupCard({
   draggingPlayerId,
   onDragPlayer
 }: LineupCardProps) {
+  const [dragOverOrder, setDragOverOrder] = useState<number | null>(null);
+  const [isBenchDragOver, setIsBenchDragOver] = useState(false);
+  const isDragInProgress = draggingPlayerId !== null;
+
   const getPlayer = (id: string | null) =>
     id ? players.find(p => p.id === id) : null;
+
+  useEffect(() => {
+    if (!isDragInProgress) {
+      setDragOverOrder(null);
+      setIsBenchDragOver(false);
+    }
+  }, [isDragInProgress]);
 
   const handleDrop = (e: React.DragEvent, order: number) => {
     e.preventDefault();
@@ -80,11 +92,57 @@ export function LineupCard({
     if (playerId) {
       onAssign(playerId, order, null);
     }
+    setDragOverOrder(null);
+    setIsBenchDragOver(false);
+  };
+
+  const handleBenchDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const playerId = draggingPlayerId || e.dataTransfer.getData('text/plain');
+    if (playerId) {
+      onAddToBench(playerId);
+    }
+    setIsBenchDragOver(false);
+    setDragOverOrder(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleSlotDragEnter = (order: number) => {
+    if (!isDragInProgress) {
+      return;
+    }
+
+    setDragOverOrder(order);
+    setIsBenchDragOver(false);
+  };
+
+  const handleSlotDragLeave = (e: React.DragEvent, order: number) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setDragOverOrder((currentOrder) => (currentOrder === order ? null : currentOrder));
+  };
+
+  const handleBenchDragEnter = () => {
+    if (!isDragInProgress) {
+      return;
+    }
+
+    setIsBenchDragOver(true);
+    setDragOverOrder(null);
+  };
+
+  const handleBenchDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsBenchDragOver(false);
   };
 
   const benchPlayers = benchPlayerIds
@@ -113,10 +171,12 @@ export function LineupCard({
               className={cn(
                 'lineup-slot flex items-center gap-2 px-3 py-2',
                 !player && 'lineup-slot-empty',
-                draggingPlayerId && 'drag-over'
+                dragOverOrder === slot.order && 'drag-over'
               )}
               onDrop={e => handleDrop(e, slot.order)}
               onDragOver={handleDragOver}
+              onDragEnter={() => handleSlotDragEnter(slot.order)}
+              onDragLeave={(e) => handleSlotDragLeave(e, slot.order)}
             >
               {/* Order number */}
               <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
@@ -172,8 +232,10 @@ export function LineupCard({
               {/* Actions */}
               {player && (
                 <button
+                  type="button"
                   onClick={() => onRemove(slot.order)}
-                  className="p-0.5 rounded hover:bg-muted transition-colors"
+                  aria-label={`Remove ${player.name} from lineup`}
+                  className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
                 >
                   <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
@@ -193,16 +255,12 @@ export function LineupCard({
         <div
           className={cn(
             'min-h-[44px] p-2',
-            draggingPlayerId && 'bg-accent/30'
+            isBenchDragOver && 'bg-accent/30'
           )}
-          onDrop={e => {
-            e.preventDefault();
-            const playerId = draggingPlayerId || e.dataTransfer.getData('text/plain');
-            if (playerId) {
-              onAddToBench(playerId);
-            }
-          }}
+          onDrop={handleBenchDrop}
           onDragOver={handleDragOver}
+          onDragEnter={handleBenchDragEnter}
+          onDragLeave={handleBenchDragLeave}
         >
           {benchPlayers.length === 0 ? (
             <p className="text-[10px] text-muted-foreground/50 text-center py-1 italic">

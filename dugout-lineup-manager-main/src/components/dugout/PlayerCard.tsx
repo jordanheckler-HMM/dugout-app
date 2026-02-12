@@ -151,11 +151,13 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
         {/* Edit button */}
         {onEdit && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onEdit();
             }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted transition-all"
+            aria-label={`Edit ${player.name}`}
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-0.5 rounded hover:bg-muted transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
           </button>

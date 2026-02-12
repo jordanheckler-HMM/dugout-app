@@ -222,7 +222,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
           <div className="space-y-2">
             <Label htmlFor="primary-position">Primary Position</Label>
             <Select value={primaryPosition} onValueChange={(value) => setPrimaryPosition(value as Position)}>
-              <SelectTrigger className="bg-background">
+              <SelectTrigger id="primary-position" className="bg-background">
                 <SelectValue placeholder="Select primary position" />
               </SelectTrigger>
               <SelectContent position="item-aligned">
@@ -266,10 +266,12 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
                 .filter(pos => pos !== primaryPosition)
                 .map(pos => (
                   <button
+                    type="button"
                     key={pos}
                     onClick={() => toggleSecondaryPosition(pos)}
+                    aria-pressed={secondaryPositions.includes(pos)}
                     className={cn(
-                      'px-2.5 py-1.5 rounded text-xs font-medium transition-colors',
+                      'px-2.5 py-1.5 rounded text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
                       secondaryPositions.includes(pos)
                         ? 'bg-yellow-500 text-white hover:bg-yellow-600'
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -290,10 +292,12 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
             <div className="flex gap-2">
               {handednessOptions.map(opt => (
                 <button
+                  type="button"
                   key={opt.value}
                   onClick={() => setBats(opt.value)}
+                  aria-pressed={bats === opt.value}
                   className={cn(
-                    'flex-1 py-2 rounded text-sm font-medium transition-colors',
+                    'flex-1 py-2 rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
                     bats === opt.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -311,10 +315,12 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
             <div className="flex gap-2">
               {handednessOptions.filter(o => o.value !== 'S').map(opt => (
                 <button
+                  type="button"
                   key={opt.value}
                   onClick={() => setThrows(opt.value)}
+                  aria-pressed={throws_ === opt.value}
                   className={cn(
-                    'flex-1 py-2 rounded text-sm font-medium transition-colors',
+                    'flex-1 py-2 rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
                     throws_ === opt.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -332,10 +338,12 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
             <div className="flex gap-2">
               {statusOptions.map(opt => (
                 <button
+                  type="button"
                   key={opt.value}
                   onClick={() => setStatus(opt.value)}
+                  aria-pressed={status === opt.value}
                   className={cn(
-                    'flex-1 py-2 rounded text-sm font-medium transition-colors',
+                    'flex-1 py-2 rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
                     status === opt.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -352,6 +360,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
         {/* Actions */}
         <div className="mt-4 pt-4 border-t flex gap-3">
           <button
+            type="button"
             onClick={handleSave}
             disabled={!isFormValid()}
             className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -360,7 +369,9 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
           </button>
           {onRemove && (
             <button
+              type="button"
               onClick={onRemove}
+              aria-label={`Remove ${player?.name ?? 'player'}`}
               className="p-2.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
             >
               <Trash2 className="w-5 h-5" />

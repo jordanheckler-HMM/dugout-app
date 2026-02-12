@@ -125,7 +125,13 @@ export function DugoutLayout() {
               <span className="text-[10px] uppercase tracking-[0.2em] text-sidebar-foreground/60 [writing-mode:vertical-rl] [transform:rotate(180deg)]">
                 Players
               </span>
-              <Button variant="ghost" size="icon" onClick={toggleLeftPanel} className="h-7 w-7 text-sidebar-foreground/80 hover:text-sidebar-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleLeftPanel}
+                aria-label="Expand players panel"
+                className="h-7 w-7 text-sidebar-foreground/80 hover:text-sidebar-foreground"
+              >
                 <PanelLeftOpen className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -135,6 +141,7 @@ export function DugoutLayout() {
                 variant="ghost"
                 size="icon"
                 onClick={toggleLeftPanel}
+                aria-label="Collapse players panel"
                 className="absolute right-1 top-1 z-20 h-6 w-6 bg-sidebar/70 text-sidebar-foreground/70 hover:text-sidebar-foreground"
                 title="Collapse players panel"
               >
@@ -199,8 +206,10 @@ export function DugoutLayout() {
               <button
                 type="button"
                 onClick={() => setActivePanel('rankings')}
+                aria-label="Show rankings panel"
+                aria-pressed={activePanel === 'rankings'}
                 className={cn(
-                  "h-7 w-7 rounded border border-lyra-border flex items-center justify-center",
+                  "h-7 w-7 rounded border border-lyra-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   activePanel === 'rankings' ? "text-gold border-gold/40" : "text-lyra-foreground/55"
                 )}
                 title="Rankings panel"
@@ -210,15 +219,23 @@ export function DugoutLayout() {
               <button
                 type="button"
                 onClick={() => setActivePanel('lyra')}
+                aria-label="Show AI Coach panel"
+                aria-pressed={activePanel === 'lyra'}
                 className={cn(
-                  "h-7 w-7 rounded border border-lyra-border flex items-center justify-center",
+                  "h-7 w-7 rounded border border-lyra-border flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   activePanel === 'lyra' ? "text-gold border-gold/40" : "text-lyra-foreground/55"
                 )}
                 title="AI Coach panel"
               >
                 <Sparkles className="w-3.5 h-3.5" />
               </button>
-              <Button variant="ghost" size="icon" onClick={toggleRightPanel} className="h-7 w-7 text-lyra-foreground/80 hover:text-lyra-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleRightPanel}
+                aria-label="Expand right panel"
+                className="h-7 w-7 text-lyra-foreground/80 hover:text-lyra-foreground"
+              >
                 <PanelRightOpen className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -226,9 +243,11 @@ export function DugoutLayout() {
             <div className="h-full flex flex-col">
               <div className="flex border-b border-lyra-border bg-lyra h-9">
                 <button
+                  type="button"
                   onClick={() => setActivePanel('rankings')}
+                  aria-pressed={activePanel === 'rankings'}
                   className={cn(
-                    "flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 border-b",
+                    "flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 border-b focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     activePanel === 'rankings'
                       ? 'bg-lyra-muted/60 text-gold border-gold/60'
                       : 'text-lyra-foreground/65 border-transparent hover:text-lyra-foreground hover:bg-lyra-muted/40'
@@ -238,9 +257,11 @@ export function DugoutLayout() {
                   Rankings
                 </button>
                 <button
+                  type="button"
                   onClick={() => setActivePanel('lyra')}
+                  aria-pressed={activePanel === 'lyra'}
                   className={cn(
-                    "flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 border-b",
+                    "flex-1 px-2 py-1.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 border-b focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     activePanel === 'lyra'
                       ? 'bg-lyra-muted/60 text-gold border-gold/60'
                       : 'text-lyra-foreground/65 border-transparent hover:text-lyra-foreground hover:bg-lyra-muted/40'
@@ -252,7 +273,8 @@ export function DugoutLayout() {
                 <button
                   type="button"
                   onClick={toggleRightPanel}
-                  className="px-1.5 text-lyra-foreground/60 hover:text-lyra-foreground border-l border-lyra-border"
+                  aria-label="Collapse right panel"
+                  className="px-1.5 text-lyra-foreground/60 hover:text-lyra-foreground border-l border-lyra-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   title="Collapse right panel"
                 >
                   <PanelRightClose className="w-3.5 h-3.5" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, KeyboardEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { gamesApi, BackendGame } from '@/api/client';
 import { Game } from '@/types/player';
@@ -303,6 +303,13 @@ const Games = () => {
     navigate(`/games/${gameId}/stats`);
   };
 
+  const handleGameCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, gameId: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleGameClick(gameId);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short',
@@ -377,13 +384,15 @@ const Games = () => {
     return (
       <div
         key={game.id}
-        className="bg-card border border-border rounded-md p-2.5 hover:bg-muted/20 transition-colors cursor-pointer group relative"
+        className="bg-card border border-border rounded-md p-2.5 hover:bg-muted/20 transition-colors group relative"
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
+              type="button"
               onClick={(e) => e.stopPropagation()}
-              className="absolute top-1.5 right-1.5 p-1.5 rounded-md hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`Open actions for ${game.opponent}`}
+              className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-md hover:bg-muted text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <MoreVertical className="w-3.5 h-3.5" />
             </button>
@@ -413,7 +422,14 @@ const Games = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div onClick={() => handleGameClick(game.id)}>
+        <div
+          onClick={() => handleGameClick(game.id)}
+          onKeyDown={(event) => handleGameCardKeyDown(event, game.id)}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open stats for ${game.opponent} on ${formatDate(game.date)}`}
+          className="rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1.5">
@@ -548,7 +564,7 @@ const Games = () => {
                     <div className="space-y-1.5">
                       <Label htmlFor="gameType">Game Type</Label>
                       <Select value={formGameType} onValueChange={(v) => setFormGameType(v as 'schedule' | 'manual')}>
-                        <SelectTrigger>
+                        <SelectTrigger id="gameType">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -565,10 +581,12 @@ const Games = () => {
                         type="date"
                         value={formDate}
                         onChange={(e) => handleDateChange(e.target.value)}
+                        aria-invalid={Boolean(dateError)}
+                        aria-describedby={dateError ? 'date-error' : undefined}
                         className={cn(dateError && 'border-destructive focus-visible:ring-destructive')}
                       />
                       {dateError && (
-                        <p className="text-xs text-destructive">{dateError}</p>
+                        <p id="date-error" className="text-xs text-destructive">{dateError}</p>
                       )}
                     </div>
 
@@ -579,17 +597,19 @@ const Games = () => {
                         value={formOpponent}
                         onChange={(e) => handleOpponentChange(e.target.value)}
                         placeholder="Team name"
+                        aria-invalid={Boolean(opponentError)}
+                        aria-describedby={opponentError ? 'opponent-error' : undefined}
                         className={cn(opponentError && 'border-destructive focus-visible:ring-destructive')}
                       />
                       {opponentError && (
-                        <p className="text-xs text-destructive">{opponentError}</p>
+                        <p id="opponent-error" className="text-xs text-destructive">{opponentError}</p>
                       )}
                     </div>
 
                     <div className="space-y-1.5">
                       <Label htmlFor="homeAway">Home/Away</Label>
                       <Select value={formHomeAway} onValueChange={(v) => setFormHomeAway(v as 'home' | 'away')}>
-                        <SelectTrigger>
+                        <SelectTrigger id="homeAway">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -603,7 +623,7 @@ const Games = () => {
                       <div className="space-y-1.5">
                         <Label htmlFor="result">Result</Label>
                         <Select value={formResult || undefined} onValueChange={(v) => setFormResult(v as 'W' | 'L' | 'T' | '')}>
-                          <SelectTrigger>
+                          <SelectTrigger id="result">
                             <SelectValue placeholder="TBD" />
                           </SelectTrigger>
                           <SelectContent>
@@ -623,10 +643,12 @@ const Games = () => {
                           value={formScoreUs}
                           onChange={(e) => handleScoreUsChange(e.target.value)}
                           placeholder="0"
+                          aria-invalid={Boolean(scoreUsError)}
+                          aria-describedby={scoreUsError ? 'score-us-error' : undefined}
                           className={cn(scoreUsError && 'border-destructive focus-visible:ring-destructive')}
                         />
                         {scoreUsError && (
-                          <p className="text-xs text-destructive">{scoreUsError}</p>
+                          <p id="score-us-error" className="text-xs text-destructive">{scoreUsError}</p>
                         )}
                       </div>
 
@@ -639,10 +661,12 @@ const Games = () => {
                           value={formScoreThem}
                           onChange={(e) => handleScoreThemChange(e.target.value)}
                           placeholder="0"
+                          aria-invalid={Boolean(scoreThemError)}
+                          aria-describedby={scoreThemError ? 'score-them-error' : undefined}
                           className={cn(scoreThemError && 'border-destructive focus-visible:ring-destructive')}
                         />
                         {scoreThemError && (
-                          <p className="text-xs text-destructive">{scoreThemError}</p>
+                          <p id="score-them-error" className="text-xs text-destructive">{scoreThemError}</p>
                         )}
                       </div>
                     </div>

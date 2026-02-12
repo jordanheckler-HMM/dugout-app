@@ -349,17 +349,22 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={handleClearChat}
             disabled={messages.length === 0 && !isTyping}
-            className="p-1.5 rounded-md transition-colors hover:bg-lyra-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Clear chat"
+            className="p-1.5 rounded-md transition-colors hover:bg-lyra-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             title="Clear chat"
           >
             <Trash2 className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={() => setShowSettings(!showSettings)}
+            aria-label={showSettings ? "Hide AI settings" : "Show AI settings"}
+            aria-pressed={showSettings}
             className={cn(
-              "p-1.5 rounded-md transition-colors hover:bg-lyra-muted",
+              "p-1.5 rounded-md transition-colors hover:bg-lyra-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               showSettings && "bg-lyra-muted text-gold"
             )}
             title="AI settings"
@@ -395,8 +400,9 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
                   {examplePrompts.map((prompt, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => handleExampleClick(prompt)}
-                      className="block w-full text-left px-2.5 py-1.5 rounded border border-lyra-border text-xs text-lyra-foreground/70 bg-lyra-muted/20 hover:bg-lyra-muted/40 transition-colors"
+                      className="block w-full text-left px-2.5 py-1.5 rounded border border-lyra-border text-xs text-lyra-foreground/70 bg-lyra-muted/20 hover:bg-lyra-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       "{prompt}"
                     </button>
@@ -472,23 +478,28 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            aria-label="Lyra message input"
             placeholder="Ask about your lineup or strategy..."
             rows={2}
             className="flex-1 resize-none rounded-md bg-lyra-muted/30 border border-lyra-border px-2.5 py-1.5 text-xs text-lyra-foreground placeholder:text-lyra-foreground/40 focus:outline-none focus:ring-1 focus:ring-gold/50"
           />
           {isTyping ? (
             <button
+              type="button"
               onClick={handleStopGeneration}
-              className="p-2 rounded-md border border-destructive/40 bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
+              aria-label="Stop generation"
+              className="p-2 rounded-md border border-destructive/40 bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Stop generation"
             >
               <Square className="w-3.5 h-3.5" />
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleSend}
               disabled={!input.trim()}
-              className="p-2 rounded-md border border-gold/30 bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Send message"
+              className="p-2 rounded-md border border-gold/30 bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Send message"
             >
               <Send className="w-3.5 h-3.5" />

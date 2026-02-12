@@ -86,9 +86,11 @@ export function GameCanvas({
         {/* View toggle */}
         <div className="flex items-center gap-1 p-0.5 bg-muted/60 rounded-md border border-border">
           <button
+            type="button"
             onClick={() => setViewMode('lineup')}
+            aria-pressed={viewMode === 'lineup'}
             className={cn(
-              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border',
+              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               viewMode === 'lineup'
                 ? 'bg-card text-foreground border-border'
                 : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border/60'
@@ -98,9 +100,11 @@ export function GameCanvas({
             Lineup
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('field')}
+            aria-pressed={viewMode === 'field'}
             className={cn(
-              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border',
+              'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
               viewMode === 'field'
                 ? 'bg-card text-foreground border-border'
                 : 'text-muted-foreground border-transparent hover:text-foreground hover:border-border/60'
@@ -138,7 +142,12 @@ export function GameCanvas({
           <div className="flex items-center gap-0.5 ml-2 pl-2 border-l border-border">
             <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
               <DialogTrigger asChild>
-                <button className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Save configuration">
+                <button
+                  type="button"
+                  aria-label="Save configuration"
+                  className="p-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  title="Save configuration"
+                >
                   <Save className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </DialogTrigger>
@@ -153,6 +162,7 @@ export function GameCanvas({
                     placeholder="e.g., Game 1, Vs Lefty, Small Ball"
                   />
                   <button
+                    type="button"
                     onClick={handleSave}
                     disabled={!configName.trim()}
                     className="w-full py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
@@ -166,7 +176,12 @@ export function GameCanvas({
             {savedConfigs.length > 0 && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <button className="p-1.5 rounded-md hover:bg-muted transition-colors" title="Load configuration">
+                  <button
+                    type="button"
+                    aria-label="Load configuration"
+                    className="p-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    title="Load configuration"
+                  >
                     <FolderOpen className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </DialogTrigger>
@@ -181,8 +196,9 @@ export function GameCanvas({
                         className="flex items-center gap-2 w-full"
                       >
                         <button
+                          type="button"
                           onClick={() => onLoadConfig(config.id)}
-                          className="flex-1 text-left px-2.5 py-1.5 rounded border border-transparent hover:border-border hover:bg-muted/40 transition-colors"
+                          className="flex-1 text-left px-2.5 py-1.5 rounded border border-transparent hover:border-border hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         >
                           <span className="text-xs font-medium">{config.name}</span>
                           <span className="text-[10px] text-muted-foreground ml-1.5">
@@ -190,11 +206,13 @@ export function GameCanvas({
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             onDeleteConfig(config.id);
                           }}
-                          className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive transition-colors"
+                          aria-label={`Delete ${config.name} configuration`}
+                          className="p-1.5 rounded-md hover:bg-destructive/10 text-destructive transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                           title="Delete configuration"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -207,12 +225,14 @@ export function GameCanvas({
             )}
 
             <button
+              type="button"
               onClick={async () => {
                 // Clear both lineup and field regardless of view mode
                 await onClearLineup();
                 await onClearField();
               }}
-              className="p-1.5 rounded-md hover:bg-muted transition-colors"
+              aria-label="Clear lineup and field"
+              className="p-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Clear lineup & field"
             >
               <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
