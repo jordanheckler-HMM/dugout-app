@@ -27,6 +27,28 @@ class AIService:
         """Update the active configuration."""
         self.config = config
 
+    @staticmethod
+    def _extract_error_message(payload: str, default: str) -> str:
+        """Extract provider error message from JSON/plain response payload."""
+        if not payload:
+            return default
+        try:
+            parsed = json.loads(payload)
+            if isinstance(parsed, dict):
+                for key in ("error", "message", "detail"):
+                    value = parsed.get(key)
+                    if isinstance(value, str) and value.strip():
+                        return value.strip()
+        except Exception:
+            pass
+        cleaned = payload.strip()
+        return cleaned or default
+
+    @staticmethod
+    def _is_model_not_found_error(error_text: str) -> bool:
+        lowered = error_text.lower()
+        return "model" in lowered and "not found" in lowered
+
     async def check_connection(self) -> bool:
         """Check connection to the currently configured provider."""
         if self.config.provider == "ollama":
@@ -79,23 +101,86 @@ class AIService:
     # --- OLLAMA IMPLEMENTATION ---
     async def _stream_ollama(self, messages: List[Dict[str, str]], model: str):
         url = f"{self.config.ollama_url}/api/chat"
-        payload = {"model": model, "messages": messages, "stream": True}
+        candidate_models: List[str] = []
+        for candidate in [
+            model,
+            f"{model}:latest" if ":" not in model else None,
+            self.config.preferred_model,
+            (
+                f"{self.config.preferred_model}:latest"
+                if self.config.preferred_model and ":" not in self.config.preferred_model
+                else None
+            ),
+            "lyra-coach:latest",
+        ]:
+            if candidate and candidate not in candidate_models:
+                candidate_models.append(candidate)
+
+        last_error = "Ollama returned an empty response."
 
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", url, json=payload) as response:
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
-                        try:
-                            data = json.loads(line)
+                for candidate_model in candidate_models:
+                    payload = {
+                        "model": candidate_model,
+                        "messages": messages,
+                        "stream": True,
+                    }
+                    content_sent = False
+
+                    async with client.stream("POST", url, json=payload) as response:
+                        if response.status_code >= 400:
+                            body = (await response.aread()).decode("utf-8", errors="replace")
+                            last_error = self._extract_error_message(
+                                body,
+                                f"Ollama request failed with status {response.status_code}.",
+                            )
+                            if self._is_model_not_found_error(last_error):
+                                logger.warning(
+                                    "Ollama model '%s' unavailable. Trying fallback model.",
+                                    candidate_model,
+                                )
+                                continue
+                            yield f"\n[AI Error: {last_error}]"
+                            return
+
+                        stream_error = None
+                        async for line in response.aiter_lines():
+                            if not line:
+                                continue
+                            try:
+                                data = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+
+                            if isinstance(data, dict) and data.get("error"):
+                                stream_error = str(data["error"])
+                                break
+
                             if "message" in data and "content" in data["message"]:
-                                yield data["message"]["content"]
+                                chunk = data["message"]["content"]
+                                if chunk:
+                                    content_sent = True
+                                    yield chunk
                             if data.get("done"):
                                 break
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
+
+                        if content_sent:
+                            return
+
+                        if stream_error:
+                            last_error = stream_error
+                            if self._is_model_not_found_error(stream_error):
+                                logger.warning(
+                                    "Ollama model '%s' returned not-found during stream. Trying fallback model.",
+                                    candidate_model,
+                                )
+                                continue
+                            yield f"\n[AI Error: {stream_error}]"
+                            return
+
+                yield f"\n[AI Error: {last_error}]"
+        except Exception:
             logger.exception("Ollama streaming error")
             yield "\n[AI Error: Connection failed. Check that Ollama is running.]"
 
@@ -121,18 +206,34 @@ class AIService:
                     headers=headers,
                     json=payload,
                 ) as response:
+                    if response.status_code >= 400:
+                        body = (await response.aread()).decode("utf-8", errors="replace")
+                        error_message = self._extract_error_message(
+                            body,
+                            f"OpenAI request failed with status {response.status_code}.",
+                        )
+                        yield f"\n[AI Error: {error_message}]"
+                        return
+
                     async for line in response.aiter_lines():
                         if not line or line.strip() == "data: [DONE]":
                             continue
                         if line.startswith("data: "):
                             try:
                                 data = json.loads(line[6:])
+                                if isinstance(data, dict) and data.get("error"):
+                                    error_message = self._extract_error_message(
+                                        json.dumps(data),
+                                        "OpenAI returned an error.",
+                                    )
+                                    yield f"\n[AI Error: {error_message}]"
+                                    return
                                 delta = data["choices"][0]["delta"]
                                 if "content" in delta:
                                     yield delta["content"]
                             except Exception:
                                 continue
-        except Exception as e:
+        except Exception:
             logger.exception("OpenAI streaming error")
             yield "\n[AI Error: Failed to get response from OpenAI.]"
 
@@ -175,11 +276,27 @@ class AIService:
                     headers=headers,
                     json=payload,
                 ) as response:
+                    if response.status_code >= 400:
+                        body = (await response.aread()).decode("utf-8", errors="replace")
+                        error_message = self._extract_error_message(
+                            body,
+                            f"Anthropic request failed with status {response.status_code}.",
+                        )
+                        yield f"\n[AI Error: {error_message}]"
+                        return
+
                     async for line in response.aiter_lines():
                         if not line or not line.startswith("data: "):
                             continue
                         try:
                             data = json.loads(line[6:])
+                            if isinstance(data, dict) and data.get("type") == "error":
+                                error_message = self._extract_error_message(
+                                    json.dumps(data),
+                                    "Anthropic returned an error.",
+                                )
+                                yield f"\n[AI Error: {error_message}]"
+                                return
                             if (
                                 data["type"] == "content_block_delta"
                                 and "delta" in data
@@ -188,6 +305,6 @@ class AIService:
                                     yield data["delta"]["text"]
                         except Exception:
                             continue
-        except Exception as e:
+        except Exception:
             logger.exception("Anthropic streaming error")
             yield "\n[AI Error: Failed to get response from Anthropic.]"

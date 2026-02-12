@@ -144,6 +144,56 @@ export interface BackendSeasonStats {
 // AI Settings types
 import { AIConfig, ChatMessage } from '@/types/ai';
 
+interface BackendAIConfig {
+  provider: 'ollama' | 'openai' | 'anthropic';
+  ollama_url: string;
+  preferred_model: string;
+  openai_key?: string | null;
+  anthropic_key?: string | null;
+}
+
+interface BackendAIConfigResponse {
+  provider: 'ollama' | 'openai' | 'anthropic';
+  ollama_url: string;
+  preferred_model: string;
+  openai_key_set?: boolean;
+  anthropic_key_set?: boolean;
+}
+
+function mapFrontendAIConfigToBackend(config: AIConfig): BackendAIConfig {
+  const resolvedProvider = config.mode === 'local'
+    ? 'ollama'
+    : config.cloudProvider;
+
+  return {
+    provider: resolvedProvider,
+    ollama_url: config.ollamaUrl,
+    preferred_model: config.preferredModel,
+    openai_key: config.openaiKey || undefined,
+    anthropic_key: config.anthropicKey || undefined,
+  };
+}
+
+function mapBackendAIConfigToFrontend(
+  config: BackendAIConfigResponse,
+  previousConfig?: AIConfig
+): AIConfig {
+  const mode = config.provider === 'ollama' ? 'local' : 'cloud';
+  const cloudProvider = config.provider === 'anthropic'
+    ? 'anthropic'
+    : 'openai';
+
+  return {
+    mode,
+    provider: mode === 'local' ? 'ollama' : cloudProvider,
+    cloudProvider,
+    ollamaUrl: config.ollama_url,
+    preferredModel: config.preferred_model,
+    openaiKey: previousConfig?.openaiKey ?? '',
+    anthropicKey: previousConfig?.anthropicKey ?? '',
+  };
+}
+
 // Helper for error handling
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -345,7 +395,8 @@ export const lyraApi = {
     model: string,
     onChunk: (chunk: string) => void,
     onDone?: () => void,
-    onError?: (err: unknown) => void
+    onError?: (err: unknown) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     try {
       const response = await fetch(`${API_BASE}/lyra/chat/stream`, {
@@ -354,6 +405,7 @@ export const lyraApi = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ messages, model }),
+        signal,
       });
 
       if (!response.ok) throw new Error('Network response was not ok');
@@ -380,6 +432,10 @@ export const lyraApi = {
       }
       if (onDone) onDone();
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        if (onDone) onDone();
+        return;
+      }
       if (onError) onError(err);
     }
   },
@@ -388,15 +444,17 @@ export const lyraApi = {
 // ==================== Settings API ====================
 
 export const settingsApi = {
-  async getAISettings(): Promise<AIConfig> {
-    return fetchApi<AIConfig>('/settings/ai');
+  async getAISettings(previousConfig?: AIConfig): Promise<AIConfig> {
+    const backendConfig = await fetchApi<BackendAIConfigResponse>('/settings/ai');
+    return mapBackendAIConfigToFrontend(backendConfig, previousConfig);
   },
 
   async updateAISettings(config: AIConfig): Promise<AIConfig> {
-    return fetchApi<AIConfig>('/settings/ai', {
+    const backendConfig = await fetchApi<BackendAIConfigResponse>('/settings/ai', {
       method: 'PUT',
-      body: JSON.stringify(config),
+      body: JSON.stringify(mapFrontendAIConfigToBackend(config)),
     });
+    return mapBackendAIConfigToFrontend(backendConfig, config);
   },
 
   async getOllamaModels(ollamaUrl?: string): Promise<OllamaModelsResponse> {

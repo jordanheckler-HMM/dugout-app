@@ -1,28 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, AlertCircle, Settings as SettingsIcon, Loader2 } from 'lucide-react';
+import { Send, Sparkles, AlertCircle, Settings as SettingsIcon, Loader2, Square, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Player, LineupSlot, FieldPosition } from '@/types/player';
-import { lyraApi, settingsApi } from '@/api/client';
+import { healthApi, lyraApi, settingsApi } from '@/api/client';
 import { mapFrontendPlayerToBackend, mapFrontendLineupToBackend, mapFrontendFieldToBackend } from '@/api/mappers';
 import { useAIStore } from '@/store/aiStore';
 import { AISettingsPanel } from './AISettingsPanel';
 import { ChatMessage } from '@/types/ai';
-
-interface Message {
-  id: string;
-  role: 'user' | 'lyra';
-  content: string;
-  timestamp: Date;
-}
-
-interface LyraPanelProps {
-  lineup: LineupSlot[];
-  fieldPositions: FieldPosition[];
-  players: Player[];
-}
 
 interface Message {
   id: string;
@@ -45,7 +32,16 @@ const examplePrompts = [
 ];
 
 export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
-  const { mode, provider, preferredModel } = useAIStore();
+  const {
+    mode,
+    provider,
+    cloudProvider,
+    ollamaUrl,
+    preferredModel,
+    openaiKey,
+    anthropicKey,
+    updateSettings,
+  } = useAIStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -53,6 +49,9 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
   const [showSettings, setShowSettings] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const activeResponseIdRef = useRef<string | null>(null);
+  const stoppedByUserRef = useRef(false);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -61,9 +60,72 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
     }
   }, [messages, isTyping]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  // Abort active generation when component unmounts
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
+  const buildConversationHistory = (chatMessages: Message[]): ChatMessage[] => {
+    const backendPlayers = players.map(player => ({
+      id: player.id,
+      ...mapFrontendPlayerToBackend(player),
+    }));
+    const backendLineup = mapFrontendLineupToBackend(lineup);
+    const backendField = mapFrontendFieldToBackend(fieldPositions);
+
+    const teamContext = [
+      'Current team context (use this for all analysis):',
+      `Lineup: ${JSON.stringify(backendLineup)}`,
+      `Field Positions: ${JSON.stringify(backendField)}`,
+      `Players: ${JSON.stringify(backendPlayers)}`,
+    ].join('\n');
+
+    return [
+      {
+        role: 'system',
+        content: 'You are Lyra, an advanced baseball coaching assistant in the Dugout app. Be concise, strategic, and practical. Explain tradeoffs and keep recommendations coach-controlled.',
+      },
+      { role: 'system', content: teamContext },
+      ...chatMessages.map((message) => ({
+        role: message.role === 'lyra' ? 'assistant' : 'user',
+        content: message.content,
+      }) as ChatMessage),
+    ];
+  };
+
+  const handleStopGeneration = () => {
+    if (!isTyping) {
+      return;
+    }
+
+    const activeResponseId = activeResponseIdRef.current;
+    stoppedByUserRef.current = true;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    activeResponseIdRef.current = null;
+    setIsTyping(false);
+
+    if (activeResponseId) {
+      setMessages((previous) => previous.filter(
+        (message) => !(message.id === activeResponseId && message.content.trim() === '')
+      ));
+    }
+  };
+
+  const handleClearChat = () => {
+    if (isTyping) {
+      handleStopGeneration();
+    }
+    setMessages([]);
+    setError(null);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isTyping) return;
+
+    stoppedByUserRef.current = false;
     const userContent = input.trim();
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -71,50 +133,68 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
       content: userContent,
       timestamp: new Date()
     };
+    const nextMessages = [...messages, userMessage];
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(nextMessages);
     setInput('');
     setIsTyping(true);
     setError(null);
 
-    // Prepare context message for the AI
-    // We send context as a hidden system/user message or part of the first message
-    // Since streamChat takes ChatMessage[], we construct the conversation history locally
-    // but we need to inject the game state context.
+    const conversationHistory = buildConversationHistory(nextMessages);
+    let modelToUse = preferredModel;
 
-    // Convert frontend data to backend format for context string
-    const backendPlayers = players.map(p => ({
-      id: p.id,
-      ...mapFrontendPlayerToBackend(p)
-    }));
-    const backendLineup = mapFrontendLineupToBackend(lineup);
-    const backendField = mapFrontendFieldToBackend(fieldPositions);
+    // Ensure local Ollama mode always uses an installed model.
+    if (mode === 'local' && provider === 'ollama') {
+      try {
+        const health = await healthApi.check();
+        if (!health.ollama_connected) {
+          setError('Ollama is not connected. Start Ollama and try again.');
+          setIsTyping(false);
+          return;
+        }
 
-    const contextPrompt = `
-Context Data:
-Lineup: ${JSON.stringify(backendLineup)}
-Field Positions: ${JSON.stringify(backendField)}
-Players: ${JSON.stringify(backendPlayers.map(p => ({
-      name: p.name,
-      primary: p.primary_position,
-      bats: p.bats
-    })))}
+        const installedModels = health.ollama_models || [];
+        if (installedModels.length === 0) {
+          setError('No Ollama models installed. Install a model and try again.');
+          setIsTyping(false);
+          return;
+        }
 
-User Question: ${userContent}
-    `.trim();
+        if (!installedModels.includes(modelToUse)) {
+          const fallbackModel = installedModels.includes('lyra-coach:latest')
+            ? 'lyra-coach:latest'
+            : installedModels[0];
 
-    const conversationHistory: ChatMessage[] = [
-      { role: 'system', content: "You are Lyra, an advanced baseball coaching assistant in the Dugout app. Analyze the provided lineup and field positions. Be concise, strategic, and helpful." },
-      ...messages.map(m => ({
-        role: m.role === 'lyra' ? 'assistant' : 'user',
-        content: m.content
-      }) as ChatMessage),
-      { role: 'user', content: contextPrompt }
-    ];
+          modelToUse = fallbackModel;
+          updateSettings({
+            mode: 'local',
+            provider: 'ollama',
+            preferredModel: fallbackModel,
+          });
+
+          void settingsApi.updateAISettings({
+            mode: 'local',
+            provider: 'ollama',
+            cloudProvider,
+            ollamaUrl,
+            preferredModel: fallbackModel,
+            openaiKey,
+            anthropicKey,
+          }).catch((syncError) => {
+            console.warn('Failed to persist fallback AI model to backend:', syncError);
+          });
+        }
+      } catch (healthError) {
+        console.warn('Health check failed before streaming chat:', healthError);
+      }
+    }
 
     try {
       let currentResponseContent = "";
       const responseId = (Date.now() + 1).toString();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      activeResponseIdRef.current = responseId;
 
       // Create a placeholder message for streaming
       setMessages(prev => [...prev, {
@@ -126,8 +206,11 @@ User Question: ${userContent}
 
       await lyraApi.streamChat(
         conversationHistory,
-        preferredModel,
+        modelToUse,
         (chunk) => {
+          if (activeResponseIdRef.current !== responseId) {
+            return;
+          }
           currentResponseContent += chunk;
           setMessages(prev => prev.map(m =>
             m.id === responseId
@@ -135,16 +218,37 @@ User Question: ${userContent}
               : m
           ));
         },
-        () => setIsTyping(false),
+        () => {
+          const stoppedByUser = stoppedByUserRef.current;
+          stoppedByUserRef.current = false;
+
+          abortControllerRef.current = null;
+          activeResponseIdRef.current = null;
+          setIsTyping(false);
+
+          if (!stoppedByUser && currentResponseContent.trim().length === 0) {
+            setMessages((previous) =>
+              previous.filter((message) => message.id !== responseId)
+            );
+            setError(`No response from model "${modelToUse}". Check AI settings or pick another model.`);
+          }
+        },
         (err) => {
           console.error("Stream error:", err);
           setError("Connection interrupted.");
+          stoppedByUserRef.current = false;
+          abortControllerRef.current = null;
+          activeResponseIdRef.current = null;
           setIsTyping(false);
-        }
+        },
+        abortController.signal
       );
     } catch (err) {
       console.error('Failed to start stream:', err);
       setError('Failed to connect to Lyra.');
+      stoppedByUserRef.current = false;
+      abortControllerRef.current = null;
+      activeResponseIdRef.current = null;
       setIsTyping(false);
     }
   };
@@ -186,15 +290,26 @@ User Question: ${userContent}
             Ask for perspective. You make the decisions.
           </p>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className={cn(
-            "p-1.5 rounded-md transition-colors hover:bg-lyra-muted",
-            showSettings && "bg-lyra-muted text-gold"
-          )}
-        >
-          <SettingsIcon className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleClearChat}
+            disabled={messages.length === 0 && !isTyping}
+            className="p-1.5 rounded-md transition-colors hover:bg-lyra-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Clear chat"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={cn(
+              "p-1.5 rounded-md transition-colors hover:bg-lyra-muted",
+              showSettings && "bg-lyra-muted text-gold"
+            )}
+            title="AI settings"
+          >
+            <SettingsIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -304,13 +419,24 @@ User Question: ${userContent}
             rows={2}
             className="flex-1 resize-none rounded-md bg-lyra-muted/30 border border-lyra-border px-2.5 py-1.5 text-xs text-lyra-foreground placeholder:text-lyra-foreground/40 focus:outline-none focus:ring-1 focus:ring-gold/50"
           />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-            className="p-2 rounded-md border border-gold/30 bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send className="w-3.5 h-3.5" />
-          </button>
+          {isTyping ? (
+            <button
+              onClick={handleStopGeneration}
+              className="p-2 rounded-md border border-destructive/40 bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
+              title="Stop generation"
+            >
+              <Square className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim()}
+              className="p-2 rounded-md border border-gold/30 bg-gold/90 text-gold-foreground hover:bg-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Send message"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
     </div>

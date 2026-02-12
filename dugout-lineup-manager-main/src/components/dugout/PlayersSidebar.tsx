@@ -107,7 +107,7 @@ export function PlayersSidebar({
           <h2 className="text-sm font-semibold tracking-tight">Players</h2>
           <button
             onClick={() => setIsAddingPlayer(true)}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors"
+            className="mr-8 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add
