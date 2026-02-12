@@ -4,15 +4,16 @@ interface UpdateBannerProps {
     status: UpdateStatus;
     onInstall: () => void;
     onDismiss: () => void;
+    onRetry: () => void;
 }
 
 /**
  * A non-intrusive banner shown at the top of the app when an update is available.
  * Shows download progress when the user clicks "Update Now".
  */
-export function UpdateBanner({ status, onInstall, onDismiss }: UpdateBannerProps) {
-    // Don't show anything if no update is available
-    if (!status.available && !status.downloading) return null;
+export function UpdateBanner({ status, onInstall, onDismiss, onRetry }: UpdateBannerProps) {
+    // Show only when there is an available update, an active download, or an updater error
+    if (!status.available && !status.downloading && !status.error) return null;
 
     return (
         <div
@@ -67,7 +68,7 @@ export function UpdateBanner({ status, onInstall, onDismiss }: UpdateBannerProps
                             />
                         </div>
                     </div>
-                ) : (
+                ) : status.available ? (
                     <span>
                         <strong>Dugout v{status.version}</strong> is available!
                         {status.notes && (
@@ -76,30 +77,58 @@ export function UpdateBanner({ status, onInstall, onDismiss }: UpdateBannerProps
                             </span>
                         )}
                     </span>
+                ) : (
+                    <span>
+                        <strong>Updater check failed.</strong>
+                        <span style={{ opacity: 0.85, marginLeft: '8px' }}>
+                            {status.error}
+                        </span>
+                    </span>
                 )}
             </div>
 
             {/* Actions */}
             {!status.downloading && (
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                    <button
-                        onClick={onInstall}
-                        style={{
-                            background: 'white',
-                            color: '#1a5fb4',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '6px 16px',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            transition: 'opacity 0.2s',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-                    >
-                        Update Now
-                    </button>
+                    {status.available ? (
+                        <button
+                            onClick={onInstall}
+                            style={{
+                                background: 'white',
+                                color: '#1a5fb4',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                        >
+                            Update Now
+                        </button>
+                    ) : (
+                        <button
+                            onClick={onRetry}
+                            style={{
+                                background: 'white',
+                                color: '#1a5fb4',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '6px 16px',
+                                fontSize: '13px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                        >
+                            Retry
+                        </button>
+                    )}
                     <button
                         onClick={onDismiss}
                         style={{
@@ -120,10 +149,6 @@ export function UpdateBanner({ status, onInstall, onDismiss }: UpdateBannerProps
                 </div>
             )}
 
-            {/* Error display */}
-            {status.error && (
-                <span style={{ color: '#ffa0a0', fontSize: '12px' }}>{status.error}</span>
-            )}
         </div>
     );
 }

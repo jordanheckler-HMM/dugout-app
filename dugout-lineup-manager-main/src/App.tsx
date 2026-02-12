@@ -22,7 +22,7 @@ const AppContent = () => {
   useEcosystemInit();
 
   // Check for app updates
-  const { status: updateStatus, installUpdate, dismissUpdate } = useAppUpdater();
+  const { status: updateStatus, installUpdate, dismissUpdate, checkForUpdate } = useAppUpdater();
 
   return (
     <>
@@ -30,6 +30,7 @@ const AppContent = () => {
         status={updateStatus}
         onInstall={installUpdate}
         onDismiss={dismissUpdate}
+        onRetry={checkForUpdate}
       />
       <BrowserRouter>
         <Routes>

@@ -1,0 +1,61 @@
+name: Release Tauri App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release (macOS)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: dugout-lineup-manager-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: dugout-lineup-manager-main/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install backend build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ../backend/requirements.txt pyinstaller
+
+      - name: Build backend sidecar
+        run: npm run build:sidecar
+
+      - name: Build and publish Tauri release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: dugout-lineup-manager-main
+          tagName: ${{ github.ref_name }}
+          releaseName: Dugout ${{ github.ref_name }}
+          releaseBody: Automated release for Dugout.
+          releaseDraft: false
+          prerelease: false

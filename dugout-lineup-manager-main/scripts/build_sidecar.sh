@@ -9,7 +9,12 @@ mkdir -p "$PROJECT_DIR/src-tauri/binaries"
 # Get absolute path to backend
 BACKEND_DIR="$PROJECT_DIR/../backend"
 TARGET_DIR="$PROJECT_DIR/src-tauri/binaries"
-TARGET_TRIPLE="aarch64-apple-darwin"
+TARGET_TRIPLE="$(rustc -vV | awk '/host:/{print $2}')"
+if [ -z "${TARGET_TRIPLE}" ]; then
+    echo "❌ Failed to determine Rust host target triple."
+    echo "Install Rust and ensure 'rustc -vV' works."
+    exit 1
+fi
 PYI_CACHE_DIR="$BACKEND_DIR/.pyinstaller-cache"
 
 mkdir -p "$PYI_CACHE_DIR"
