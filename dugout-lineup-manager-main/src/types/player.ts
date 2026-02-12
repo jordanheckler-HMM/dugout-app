@@ -3,6 +3,8 @@ export type Position = 'P' | 'C' | '1B' | '2B' | '3B' | 'SS' | 'LF' | 'CF' | 'RF
 export type Handedness = 'L' | 'R' | 'S'; // Left, Right, Switch
 
 export type PlayerStatus = 'active' | 'inactive' | 'archived';
+export type GameSource = 'schedule' | 'manual';
+export type GameStatus = 'scheduled' | 'completed';
 
 export interface PlayerStats {
   avg?: number;
@@ -93,6 +95,8 @@ export interface Game {
   date: string;       // ISO date string
   opponent: string;
   homeAway: 'home' | 'away';
+  source: GameSource;
+  status: GameStatus;
   result?: 'W' | 'L' | 'T';
   scoreUs?: number;
   scoreThem?: number;

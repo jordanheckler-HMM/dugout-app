@@ -35,6 +35,8 @@ function backendGameToFrontend(backendGame: BackendGame): Game {
     date: backendGame.date,
     opponent: backendGame.opponent,
     homeAway: backendGame.home_away as 'home' | 'away',
+    source: backendGame.source === 'schedule' ? 'schedule' : 'manual',
+    status: backendGame.status === 'completed' ? 'completed' : 'scheduled',
     result: backendGame.result as 'W' | 'L' | 'T' | undefined,
     scoreUs: backendGame.score_us,
     scoreThem: backendGame.score_them,

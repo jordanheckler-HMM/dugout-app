@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Player, LineupSlot, FieldPosition } from '@/types/player';
-import { healthApi, lyraApi, settingsApi } from '@/api/client';
+import { healthApi, lyraApi, settingsApi, gamesApi } from '@/api/client';
 import { mapFrontendPlayerToBackend, mapFrontendLineupToBackend, mapFrontendFieldToBackend } from '@/api/mappers';
 import { useAIStore } from '@/store/aiStore';
 import { AISettingsPanel } from './AISettingsPanel';
@@ -67,20 +67,77 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
     };
   }, []);
 
-  const buildConversationHistory = (chatMessages: Message[]): ChatMessage[] => {
+  const buildScheduleContext = async (): Promise<string | null> => {
+    try {
+      const games = await gamesApi.getAll();
+
+      const completedGames = games
+        .filter((game) => {
+          if (game.status) {
+            return game.status === 'completed';
+          }
+          return Boolean(game.result) || (game.score_us !== undefined && game.score_them !== undefined);
+        })
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 5)
+        .map((game) => ({
+          date: game.date,
+          opponent: game.opponent,
+          home_away: game.home_away,
+          result: game.result,
+          score_us: game.score_us,
+          score_them: game.score_them,
+          source: game.source || 'manual',
+        }));
+
+      const scheduledGames = games
+        .filter((game) => {
+          if (game.status) {
+            return game.status === 'scheduled';
+          }
+          return !game.result && !(game.score_us !== undefined && game.score_them !== undefined);
+        })
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(0, 5)
+        .map((game) => ({
+          date: game.date,
+          opponent: game.opponent,
+          home_away: game.home_away,
+          source: game.source || 'manual',
+        }));
+
+      return [
+        'Schedule context (recent and upcoming):',
+        `Recent Completed Games: ${JSON.stringify(completedGames)}`,
+        `Upcoming Scheduled Games: ${JSON.stringify(scheduledGames)}`,
+      ].join('\n');
+    } catch (error) {
+      console.warn('Failed to load schedule context for Lyra chat:', error);
+      return null;
+    }
+  };
+
+  const buildConversationHistory = async (chatMessages: Message[]): Promise<ChatMessage[]> => {
     const backendPlayers = players.map(player => ({
       id: player.id,
       ...mapFrontendPlayerToBackend(player),
     }));
     const backendLineup = mapFrontendLineupToBackend(lineup);
     const backendField = mapFrontendFieldToBackend(fieldPositions);
+    const scheduleContext = await buildScheduleContext();
 
-    const teamContext = [
+    const teamContextParts = [
       'Current team context (use this for all analysis):',
       `Lineup: ${JSON.stringify(backendLineup)}`,
       `Field Positions: ${JSON.stringify(backendField)}`,
       `Players: ${JSON.stringify(backendPlayers)}`,
-    ].join('\n');
+    ];
+
+    if (scheduleContext) {
+      teamContextParts.push(scheduleContext);
+    }
+
+    const teamContext = teamContextParts.join('\n');
 
     return [
       {
@@ -140,7 +197,7 @@ export function LyraPanel({ lineup, fieldPositions, players }: LyraPanelProps) {
     setIsTyping(true);
     setError(null);
 
-    const conversationHistory = buildConversationHistory(nextMessages);
+    const conversationHistory = await buildConversationHistory(nextMessages);
     let modelToUse = preferredModel;
 
     // Ensure local Ollama mode always uses an installed model.

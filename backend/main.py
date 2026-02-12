@@ -95,6 +95,60 @@ ai_config = AIConfig()
 ai_service = AIService(ai_config)
 
 
+def infer_game_status(
+    result: str | None,
+    score_us: int | None,
+    score_them: int | None,
+    explicit_status: str | None = None,
+) -> str:
+    """
+    Determine game status from explicit status or completion signals.
+
+    If explicit status is provided, it always wins.
+    Otherwise, any result or both scores marks the game as completed.
+    """
+    if explicit_status is not None:
+        return explicit_status
+    if result is not None:
+        return "completed"
+    if score_us is not None and score_them is not None:
+        return "completed"
+    return "scheduled"
+
+
+def normalize_game(game: Game) -> tuple[Game, bool]:
+    """
+    Normalize game defaults for backward compatibility.
+
+    Legacy records can be missing source/status. We normalize those values and
+    infer completed status from result/score signals when needed.
+    """
+    normalized_source = game.source or "manual"
+
+    completion_signals_present = game.result is not None or (
+        game.score_us is not None and game.score_them is not None
+    )
+    explicit_status = game.status
+    if game.status == "scheduled" and completion_signals_present:
+        # Legacy records without status default to "scheduled" in Pydantic.
+        # If completion signals are present, infer actual status.
+        explicit_status = None
+
+    normalized_status = infer_game_status(
+        game.result,
+        game.score_us,
+        game.score_them,
+        explicit_status=explicit_status,
+    )
+
+    normalized_data = game.model_dump()
+    normalized_data["source"] = normalized_source
+    normalized_data["status"] = normalized_status
+    normalized_game = Game(**normalized_data)
+    changed = normalized_game.model_dump() != game.model_dump()
+    return normalized_game, changed
+
+
 def get_backend_port() -> int:
     port_value = os.getenv("DUGOUT_BACKEND_PORT", "8100")
     try:
@@ -405,7 +459,17 @@ def delete_configuration(config_id: str):
 @app.get("/games", response_model=List[Game], tags=["Games"])
 def get_games():
     """Get all games."""
-    games = storage.get_games()
+    stored_games = storage.get_games()
+    games: List[Game] = []
+    changed = False
+    for game in stored_games:
+        normalized_game, did_change = normalize_game(game)
+        games.append(normalized_game)
+        changed = changed or did_change
+
+    if changed:
+        storage._save_games(games)
+
     # Sort by date, most recent first
     games.sort(key=lambda g: g.date, reverse=True)
     return games
@@ -419,11 +483,22 @@ def create_game(game_data: GameCreate):
     Used to track games for stats entry.
     """
     game_id = str(uuid.uuid4())
-    
+    game_payload = game_data.model_dump(exclude_none=True)
+    explicit_status = game_payload.pop("status", None)
+    source = game_payload.pop("source", None) or "manual"
+    inferred_status = infer_game_status(
+        result=game_payload.get("result"),
+        score_us=game_payload.get("score_us"),
+        score_them=game_payload.get("score_them"),
+        explicit_status=explicit_status,
+    )
+
     game = Game(
         id=game_id,
         created_at=datetime.now().isoformat(),
-        **game_data.model_dump()
+        source=source,
+        status=inferred_status,
+        **game_payload,
     )
     
     storage.add_game(game)
@@ -439,19 +514,44 @@ def get_game(game_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Game with ID {game_id} not found"
         )
-    return game
+    normalized_game, changed = normalize_game(game)
+    if changed:
+        storage.update_game(game_id, {
+            "source": normalized_game.source,
+            "status": normalized_game.status,
+        })
+    return normalized_game
 
 
 @app.put("/games/{game_id}", response_model=Game, tags=["Games"])
 def update_game(game_id: str, game_data: GameUpdate):
     """Update a game's information."""
-    update_dict = {k: v for k, v in game_data.model_dump().items() if v is not None}
+    existing_game = storage.get_game_by_id(game_id)
+    if not existing_game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game with ID {game_id} not found"
+        )
+
+    update_dict = game_data.model_dump(exclude_none=True)
     
     if not update_dict:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No fields provided to update"
         )
+
+    if "status" not in update_dict:
+        completion_fields = {"result", "score_us", "score_them"}
+        if completion_fields.intersection(update_dict.keys()):
+            merged_result = update_dict.get("result", existing_game.result)
+            merged_score_us = update_dict.get("score_us", existing_game.score_us)
+            merged_score_them = update_dict.get("score_them", existing_game.score_them)
+            update_dict["status"] = infer_game_status(
+                merged_result,
+                merged_score_us,
+                merged_score_them,
+            )
     
     updated_game = storage.update_game(game_id, update_dict)
     
@@ -530,6 +630,8 @@ def add_bulk_game_stats(game_id: str, stats_data: BulkGameStatsCreate):
     
     # Save all stats
     storage.save_multiple_game_stats(game_stats)
+    # Stats entry means this game has been played.
+    storage.update_game(game_id, {"status": "completed"})
     return game_stats
 
 

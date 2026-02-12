@@ -17,6 +17,8 @@ VALID_THROWS = ['L', 'R']
 VALID_STATUS = ['active', 'inactive', 'archived']
 VALID_HOME_AWAY = ['home', 'away']
 VALID_RESULT = ['W', 'L', 'T']
+VALID_GAME_SOURCE = ['schedule', 'manual']
+VALID_GAME_STATUS = ['scheduled', 'completed']
 
 
 def validate_iso_date(v: str) -> str:
@@ -341,6 +343,8 @@ class Game(BaseModel):
     result: Optional[str] = None  # "W", "L", or "T"
     score_us: Optional[int] = None
     score_them: Optional[int] = None
+    source: str = "manual"  # "schedule" or "manual"
+    status: str = "scheduled"  # "scheduled" or "completed"
     notes: Optional[str] = ""
     created_at: Optional[str] = None
 
@@ -353,6 +357,8 @@ class GameCreate(BaseModel):
     result: Optional[str] = None
     score_us: Optional[int] = Field(None, ge=0)
     score_them: Optional[int] = Field(None, ge=0)
+    source: Optional[str] = None
+    status: Optional[str] = None
     notes: Optional[str] = ""
     
     @field_validator('opponent')
@@ -382,6 +388,20 @@ class GameCreate(BaseModel):
             raise ValueError(f'Result must be one of: {", ".join(VALID_RESULT)}')
         return v
 
+    @field_validator('source')
+    @classmethod
+    def validate_source(cls, v):
+        if v is not None and v not in VALID_GAME_SOURCE:
+            raise ValueError(f'Source must be one of: {", ".join(VALID_GAME_SOURCE)}')
+        return v
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        if v is not None and v not in VALID_GAME_STATUS:
+            raise ValueError(f'Status must be one of: {", ".join(VALID_GAME_STATUS)}')
+        return v
+
 
 class GameUpdate(BaseModel):
     """Request model for updating a game."""
@@ -391,6 +411,8 @@ class GameUpdate(BaseModel):
     result: Optional[str] = None
     score_us: Optional[int] = Field(None, ge=0)
     score_them: Optional[int] = Field(None, ge=0)
+    source: Optional[str] = None
+    status: Optional[str] = None
     notes: Optional[str] = None
     
     @field_validator('opponent')
@@ -421,6 +443,20 @@ class GameUpdate(BaseModel):
     def validate_result(cls, v):
         if v is not None and v not in VALID_RESULT:
             raise ValueError(f'Result must be one of: {", ".join(VALID_RESULT)}')
+        return v
+
+    @field_validator('source')
+    @classmethod
+    def validate_source(cls, v):
+        if v is not None and v not in VALID_GAME_SOURCE:
+            raise ValueError(f'Source must be one of: {", ".join(VALID_GAME_SOURCE)}')
+        return v
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        if v is not None and v not in VALID_GAME_STATUS:
+            raise ValueError(f'Status must be one of: {", ".join(VALID_GAME_STATUS)}')
         return v
 
 
@@ -456,4 +492,3 @@ class BulkGameStatsCreate(BaseModel):
     """Request model for creating stats for multiple players in a game."""
     game_id: str
     stats: List[GameStatsCreate]
-

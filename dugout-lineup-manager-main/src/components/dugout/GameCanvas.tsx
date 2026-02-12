@@ -120,7 +120,7 @@ export function GameCanvas({
             className="gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5" />
-            Games & Stats
+            Schedule & Stats
           </Button>
 
           <div className="flex items-center gap-1.5">

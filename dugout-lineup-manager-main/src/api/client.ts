@@ -67,6 +67,8 @@ export interface BackendGame {
   date: string;
   opponent: string;
   home_away: string;
+  source?: 'schedule' | 'manual';
+  status?: 'scheduled' | 'completed';
   result?: string;
   score_us?: number;
   score_them?: number;
@@ -505,6 +507,8 @@ export const gamesApi = {
     date: string;
     opponent: string;
     home_away?: string;
+    source?: 'schedule' | 'manual';
+    status?: 'scheduled' | 'completed';
     result?: string;
     score_us?: number;
     score_them?: number;
