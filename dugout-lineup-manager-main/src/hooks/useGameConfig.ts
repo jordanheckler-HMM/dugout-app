@@ -56,10 +56,12 @@ const createEmptyLineup = (useDH: boolean): LineupSlot[] => {
   return slots;
 };
 
+const initialUseDH = true;
+
 export function useGameConfig(players?: Player[]) {
-  const [useDH, setUseDH] = useState(true);
-  const [lineup, setLineup] = useState<LineupSlot[]>(createEmptyLineup(true));
-  const [fieldPositions, setFieldPositions] = useState<FieldPosition[]>(createFieldPositions(true));
+  const [useDH, setUseDH] = useState(initialUseDH);
+  const [lineup, setLineup] = useState<LineupSlot[]>(createEmptyLineup(initialUseDH));
+  const [fieldPositions, setFieldPositions] = useState<FieldPosition[]>(createFieldPositions(initialUseDH));
   const [benchPlayerIds, setBenchPlayerIds] = useState<string[]>([]);
   const [savedConfigs, setSavedConfigs] = useState<GameConfiguration[]>([]);
   const [currentConfigName, setCurrentConfigName] = useState('Untitled');
@@ -69,7 +71,7 @@ export function useGameConfig(players?: Player[]) {
   const [isDirty, setIsDirty] = useState(false);
 
   // Helper to handle API sync with rollback
-  const syncWithRollback = async (
+  const syncWithRollback = useCallback(async (
     operation: () => Promise<void>,
     rollback: () => void,
     errorMessage: string
@@ -83,7 +85,7 @@ export function useGameConfig(players?: Player[]) {
       rollback();
       // Could also emit a toast notification here
     }
-  };
+  }, []);
 
   // Load lineup and field positions from backend on mount
   useEffect(() => {
@@ -98,10 +100,10 @@ export function useGameConfig(players?: Player[]) {
 
         // Load field positions
         const backendField = await fieldApi.get();
-        let frontendField = mapBackendFieldToFrontend(backendField, createFieldPositions(useDH));
+        let frontendField = mapBackendFieldToFrontend(backendField, createFieldPositions(initialUseDH));
         
         // If useDH is true but DH position is missing, add it
-        if (useDH && !frontendField.some(fp => fp.position === 'DH')) {
+        if (initialUseDH && !frontendField.some(fp => fp.position === 'DH')) {
           frontendField = [
             ...frontendField,
             { position: 'DH' as Position, playerId: null, x: 20, y: 85 }

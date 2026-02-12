@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { gamesApi, gameStatsApi, playersApi, BackendGame, BackendGameStats, BackendPlayer } from '@/api/client';
@@ -80,24 +80,7 @@ const GameStats = () => {
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [gameId]);
-
-  // Warn on page unload if there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!gameId) return;
     
     try {
@@ -161,7 +144,24 @@ const GameStats = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [gameId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Warn on page unload if there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   const updateStat = (playerId: string, field: keyof Omit<PlayerStats, 'player_id'>, value: string) => {
     const numValue = parseFloat(value) || 0;
