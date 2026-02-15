@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getGameByIdMock, getPlayersMock, getStatsByGameMock, navigateMock, routeState } = vi.hoisted(() => ({
+const { getGameByIdMock, getPlayersMock, getStatsByGameMock, navigateMock, toastSuccessMock, toastErrorMock, routeState } = vi.hoisted(() => ({
   getGameByIdMock: vi.fn(),
   getPlayersMock: vi.fn(),
   getStatsByGameMock: vi.fn(),
   navigateMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  toastErrorMock: vi.fn(),
   routeState: { gameId: "game-1" },
 }));
 
@@ -40,8 +42,8 @@ vi.mock("react-router-dom", async () => {
 
 vi.mock("sonner", () => ({
   toast: {
-    success: vi.fn(),
-    error: vi.fn(),
+    success: toastSuccessMock,
+    error: toastErrorMock,
   },
 }));
 
@@ -54,6 +56,8 @@ describe("GameStats", () => {
     getPlayersMock.mockReset();
     getStatsByGameMock.mockReset();
     navigateMock.mockReset();
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
 
     getGameByIdMock.mockImplementation(async (id: string) => ({
       id,
@@ -110,5 +114,30 @@ describe("GameStats", () => {
       expect(getGameByIdMock).toHaveBeenLastCalledWith("game-2");
       expect(getStatsByGameMock).toHaveBeenLastCalledWith("game-2");
     });
+  });
+
+  it("shows a non-blocking load error state with retry", async () => {
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    getGameByIdMock.mockRejectedValueOnce(new Error("Network error"));
+
+    render(<GameStats />);
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith("Failed to load game data. Please try again.");
+      expect(screen.getByRole("alert").textContent).toContain("Failed to load game data. Please try again.");
+    });
+
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(getGameByIdMock).toHaveBeenCalledTimes(2);
+      expect(getGameByIdMock).toHaveBeenLastCalledWith("game-1");
+    });
+
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 });

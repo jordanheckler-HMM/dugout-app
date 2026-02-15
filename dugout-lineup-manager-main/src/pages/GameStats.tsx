@@ -79,12 +79,14 @@ const GameStats = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!gameId) return;
     
     try {
       setLoading(true);
+      setLoadError(null);
       
       // Load game
       const backendGame = await gamesApi.getById(gameId);
@@ -140,7 +142,9 @@ const GameStats = () => {
       setStats(statsMap);
     } catch (error) {
       console.error('Failed to load data:', error);
-      alert('Failed to load game data');
+      const errorMessage = 'Failed to load game data. Please try again.';
+      setLoadError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -248,7 +252,16 @@ const GameStats = () => {
   if (!game) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Game not found</div>
+        <div className="text-center space-y-3">
+          <div role={loadError ? 'alert' : undefined} className="text-muted-foreground">
+            {loadError || 'Game not found'}
+          </div>
+          {loadError ? (
+            <Button type="button" variant="outline" size="sm" onClick={loadData}>
+              Retry
+            </Button>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -297,6 +310,13 @@ const GameStats = () => {
             </Button>
           </div>
         </div>
+        {loadError ? (
+          <div className="border-b border-border bg-destructive/10 px-4 py-2">
+            <p role="alert" className="text-xs text-destructive">
+              {loadError}
+            </p>
+          </div>
+        ) : null}
 
         {/* Stats entry */}
         <div className="flex-1 overflow-y-auto p-3">
