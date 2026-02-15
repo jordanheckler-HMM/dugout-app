@@ -1,336 +1,225 @@
-# Dugout Baseball Coaching Backend
+# Dugout Backend (FastAPI)
 
-Local-first FastAPI backend for baseball coaching and lineup management with AI-powered coaching perspective via Lyra.
+FastAPI backend for the Dugout baseball coaching application.
 
-## Core Principles
+The backend is local-first by default and persists application state to JSON files.
 
-- **Local-first only**: No cloud services, no auth, no telemetry
-- **Coach is the decision-maker**: AI provides perspective, not prescriptions
-- **Transparency**: Everything is explainable and reversible
-- **Simplicity**: Human-readable JSON storage, easy to modify and backup
+## Features
+
+- Player CRUD
+- Lineup and field-position management
+- Saved lineup configurations
+- Game schedule CRUD
+- Per-game stat entry and season stat aggregation
+- AI endpoints for lineup analysis and streaming chat
+- AI settings endpoints for provider/model configuration
 
 ## Prerequisites
 
-Before running the backend, ensure you have:
+- Python 3.11 (required; current dependency pins are validated on 3.11)
+- `pip`
 
-1. **Python 3.11 or higher**
-   ```bash
-   python --version  # Should be 3.11+
-   ```
+Optional (for local AI mode):
 
-2. **Ollama installed and running**
-   ```bash
-   # Install Ollama from: https://ollama.ai
-   
-   # Start Ollama server
-   ollama serve
-   ```
-
-3. **Lyra-coach model created**
-   ```bash
-   # Make sure you have a Modelfile in your project
-   # Then create the model:
-   ollama create lyra-coach -f Modelfile
-   
-   # Verify it's available:
-   ollama list
-   ```
+- Ollama running at `http://localhost:11434`
+- `lyra-coach` model created from `Modelfile`
 
 ## Installation
 
-1. **Navigate to the backend directory**
-   ```bash
-   cd backend
-   ```
+```bash
+cd backend
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-2. **Create a virtual environment (recommended)**
-   ```bash
-   python -m venv venv
-   
-   # Activate it:
-   # On macOS/Linux:
-   source venv/bin/activate
-   # On Windows:
-   venv\Scripts\activate
-   ```
+## Running the API
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Running the Backend
-
-Start the FastAPI server:
+### Option 1: Startup script (recommended)
 
 ```bash
-uvicorn main:app --reload
+cd backend
+./start.sh
 ```
 
-The server will start on `http://localhost:8100`
+Windows:
 
-You should see output like:
-```
-🧢 Dugout Baseball Coaching API
-============================================================
-API running at: http://localhost:8100
-API docs at: http://localhost:8100/docs
-Data directory: /path/to/backend/data
-✓ Ollama connected
-  Available models: lyra-coach
-  ✓ lyra-coach model ready
-============================================================
+```bat
+cd backend
+start.bat
 ```
 
-## API Documentation
+### Option 2: Manual `uvicorn`
 
-Once the server is running, visit:
-- **Interactive API docs**: http://localhost:8100/docs
-- **Alternative docs**: http://localhost:8100/redoc
+```bash
+cd backend
+uvicorn main:app --reload --host 127.0.0.1 --port 8100
+```
+
+Default local URL:
+
+- API: `http://localhost:8100`
+- Docs: `http://localhost:8100/docs`
+- ReDoc: `http://localhost:8100/redoc`
+
+## Local AI Setup (Ollama)
+
+```bash
+ollama serve
+cd backend
+ollama create lyra-coach -f Modelfile
+ollama list
+```
+
+The backend checks for `lyra-coach:latest`.
+
+## Environment Variables
+
+- `DUGOUT_DATA_DIR`: Override data directory (default: `data`)
+- `DUGOUT_BACKEND_PORT`: Startup display/runtime port fallback (default: `8100`)
 
 ## API Endpoints
 
-### Health Check
-- `GET /` - Root health check
-- `GET /health` - Detailed health status (including Ollama connection)
+### Health
 
-### Player Management
-- `GET /players` - List all players
-- `POST /players` - Create a new player
-- `GET /players/{id}` - Get a specific player
-- `PUT /players/{id}` - Update a player
-- `DELETE /players/{id}` - Delete a player
+- `GET /`
+- `GET /health`
 
-### Lineup Management
-- `GET /lineup` - Get current batting order (9 slots)
-- `PUT /lineup` - Update the entire lineup
+### Players
 
-### Field Positions
-- `GET /field` - Get current defensive positions
-- `PUT /field` - Update field positions
+- `GET /players`
+- `POST /players`
+- `GET /players/{player_id}`
+- `PUT /players/{player_id}`
+- `DELETE /players/{player_id}`
+
+### Lineup and Field
+
+- `GET /lineup`
+- `PUT /lineup`
+- `GET /field`
+- `PUT /field`
 
 ### Configurations
-- `GET /configurations` - List all saved configurations
-- `POST /configurations` - Save current lineup/field as a named configuration
-- `GET /configurations/{id}` - Load a specific configuration
-- `DELETE /configurations/{id}` - Delete a configuration
 
-### Lyra (AI Coaching Perspective)
-- `POST /lyra/analyze` - Get coaching perspective from Lyra
-  - Accepts current lineup, field positions, players, and optional question
-  - Returns advisory text (Lyra never makes decisions or gives commands)
+- `GET /configurations`
+- `POST /configurations`
+- `GET /configurations/{config_id}`
+- `DELETE /configurations/{config_id}`
+
+### Games
+
+- `GET /games`
+- `POST /games`
+- `GET /games/{game_id}`
+- `PUT /games/{game_id}`
+- `DELETE /games/{game_id}`
+
+### Game Stats
+
+- `GET /games/{game_id}/stats`
+- `POST /games/{game_id}/stats`
+- `GET /players/{player_id}/stats`
+- `GET /players/{player_id}/stats/season`
+
+### AI
+
+- `POST /lyra/analyze` (rate-limited: 10/minute)
+- `POST /lyra/chat/stream` (rate-limited: 20/minute)
+
+### AI Settings
+
+- `GET /settings/ai`
+- `PUT /settings/ai`
+- `GET /settings/ai/ollama-models`
 
 ## Data Storage
 
-All data is stored in the `backend/data/` directory as JSON files:
+Default storage directory: `backend/data/`
 
-- **players.json** - All players on the team
-- **lineup.json** - Current batting order (9 slots)
-- **field.json** - Current defensive positions
-- **configurations.json** - Saved lineup/field configurations
+Files:
 
-These files are:
-- Human-readable
-- Easy to backup (just copy the `data/` folder)
-- Easy to edit manually if needed
-- Created automatically on first run
+- `players.json`
+- `lineup.json`
+- `field.json`
+- `configurations.json`
+- `games.json`
+- `game_stats.json`
 
-## Example Usage
+Storage characteristics:
 
-### Create a Player
+- Human-readable JSON
+- Local file persistence
+- Atomic write pattern for safer updates
+
+## CORS
+
+Current allowed origins include:
+
+- `http://localhost:8080`
+- `http://127.0.0.1:8080`
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+- `http://localhost:8123`
+- `http://127.0.0.1:8123`
+- `tauri://localhost`
+- `http://tauri.localhost`
+- `https://tauri.localhost`
+
+If your frontend origin differs, update `allow_origins` in `main.py`.
+
+## Running Tests
+
 ```bash
-curl -X POST http://localhost:8100/players \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Smith",
-    "number": 7,
-    "primary_position": "SS",
-    "secondary_positions": ["2B", "3B"],
-    "bats": "R",
-    "throws": "R",
-    "notes": "Fast runner, good arm"
-  }'
+cd backend
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements-dev.txt
+pytest
 ```
 
-### Update Lineup
-```bash
-curl -X PUT http://localhost:8100/lineup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "lineup": [
-      {"slot_number": 1, "player_id": "player-id-1"},
-      {"slot_number": 2, "player_id": "player-id-2"},
-      {"slot_number": 3, "player_id": null},
-      {"slot_number": 4, "player_id": null},
-      {"slot_number": 5, "player_id": null},
-      {"slot_number": 6, "player_id": null},
-      {"slot_number": 7, "player_id": null},
-      {"slot_number": 8, "player_id": null},
-      {"slot_number": 9, "player_id": null}
-    ]
-  }'
-```
+Optional marker filtering:
 
-### Get Lyra's Perspective
 ```bash
-curl -X POST http://localhost:8100/lyra/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "lineup": [...],
-    "field_positions": [...],
-    "players": [...],
-    "question": "What should I consider with this defensive alignment?"
-  }'
+pytest -m unit
+pytest -m integration
 ```
 
 ## Troubleshooting
 
-### "Cannot connect to Ollama"
+### Backend not reachable
 
-**Problem**: The backend can't reach Ollama.
+- Check server is running: `curl http://localhost:8100/health`
+- Confirm no local firewall/process conflict on port `8100`
 
-**Solution**: Make sure Ollama is running:
+### Port already in use
+
 ```bash
-ollama serve
+uvicorn main:app --reload --host 127.0.0.1 --port 8101
 ```
 
-Check if it's responding:
+Update frontend `API_BASE` if you change the backend port.
+
+### Ollama connection failures
+
+- Start Ollama: `ollama serve`
+- Verify API: `curl http://localhost:11434/api/tags`
+
+### `lyra-coach` model missing
+
 ```bash
-curl http://localhost:11434/api/tags
-```
-
-### "Lyra-coach model not found"
-
-**Problem**: The Lyra model hasn't been created in Ollama.
-
-**Solution**: Create the model:
-```bash
+cd backend
 ollama create lyra-coach -f Modelfile
 ```
 
-Verify it exists:
-```bash
-ollama list
-```
+### CORS errors
 
-### CORS Errors from Frontend
-
-**Problem**: Browser blocks requests from frontend.
-
-**Solution**: The backend is configured to allow:
-- `http://localhost:5173` (Vite default)
-- `http://localhost:3000` (alternative port)
-
-If your frontend runs on a different port, update the `allow_origins` list in `main.py`.
-
-### Port Already in Use
-
-**Problem**: Port 8000 is already taken.
-
-**Solution**: Run on a different port:
-```bash
-uvicorn main:app --reload --port 8001
-```
-
-### JSON Files Corrupted
-
-**Problem**: Data files have invalid JSON.
-
-**Solution**: 
-1. Stop the server
-2. Backup the `data/` directory
-3. Delete the corrupted file(s)
-4. Restart the server (files will be recreated with defaults)
-
-## Development
-
-### Running Tests
-```bash
-# Install pytest if not already installed
-pip install pytest httpx
-
-# Run tests (when test files are added)
-pytest
-```
-
-### Code Style
-The codebase follows:
-- PEP 8 style guidelines
-- Type hints for better code clarity
-- Extensive comments explaining intent
-
-### Adding New Endpoints
-1. Define any new Pydantic models in `models.py`
-2. Add storage methods in `storage.py` if needed
-3. Create endpoint in `main.py`
-4. Update this README with new endpoint docs
-
-## Architecture
-
-```
-backend/
-├── main.py              # FastAPI app and all endpoints
-├── models.py            # Pydantic data models
-├── storage.py           # JSON file persistence layer
-├── ollama_client.py     # Ollama/Lyra integration
-├── requirements.txt     # Python dependencies
-├── README.md           # This file
-└── data/               # JSON storage (auto-created)
-    ├── players.json
-    ├── lineup.json
-    ├── field.json
-    └── configurations.json
-```
+Use an allowed localhost origin or update CORS config in `main.py`.
 
 ## Security Notes
 
-This backend is designed for **local use only**:
-- No authentication (not needed for single-coach, local use)
-- No HTTPS (local connections only)
-- No rate limiting
-- No input sanitization beyond Pydantic validation
+This backend is designed for local or trusted-network usage.
 
-**Do NOT expose this API to the internet without adding proper security measures.**
-
-## Backup and Data Management
-
-### Backing Up Data
-Simply copy the `data/` directory:
-```bash
-cp -r backend/data backend/data_backup_$(date +%Y%m%d)
-```
-
-### Restoring Data
-Replace the `data/` directory with your backup:
-```bash
-cp -r backend/data_backup_20240101 backend/data
-```
-
-### Exporting Data
-All files are JSON - you can:
-- Read them with any text editor
-- Parse them with spreadsheet software
-- Process them with scripts
-- Version control them with git
-
-## Future Enhancements
-
-The architecture supports easy additions:
-- Export configurations to CSV
-- Import player rosters from spreadsheets
-- Add game notes without changing core structure
-- Swap Ollama for different local AI models
-- Add more Lyra prompts for different coaching scenarios
-
-## License
-
-This is a pilot-stage tool intended for real coaches.
-Local-first, privacy-respecting, coach-empowering.
-
-## Support
-
-For issues or questions:
-1. Check the troubleshooting section above
-2. Verify Ollama is running and lyra-coach model exists
-3. Check the API docs at http://localhost:8100/docs
-4. Review the logs in the terminal where the server is running
+- No authentication layer by default
+- No HTTPS termination by default
+- Not intended to be exposed publicly without additional security controls

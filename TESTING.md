@@ -1,129 +1,87 @@
 # Testing
 
-This repo contains two applications with separate test surfaces:
+This repository has two test surfaces:
 
-- Backend: FastAPI (Python) in `/Users/jordanheckler/dugout-app/backend`
-- Frontend: React + Vite + TypeScript in `/Users/jordanheckler/dugout-app/dugout-lineup-manager-main`
+- Backend: FastAPI in `backend/`
+- Frontend: React/Vite in `dugout-lineup-manager-main/`
 
-## Repository Facts
+## CI Source of Truth
 
-- Primary languages:
-  - Python (backend)
-  - TypeScript (frontend)
-- Frameworks/runtime:
-  - FastAPI + Pydantic
-  - React + Vite
-- Package managers:
-  - `pip` (`requirements*.txt`) for backend
-  - `npm` (`package-lock.json`) for frontend
-- Entry points:
-  - Backend app: `backend/main.py` (served by `uvicorn main:app`)
-  - Frontend app: `dugout-lineup-manager-main/src/main.tsx`
-- Existing build system:
-  - Frontend: Vite (`npm run build`)
-  - Backend: runtime service, no separate compile step
+CI workflow:
 
-## Assumptions
+- `.github/workflows/ci.yml`
 
-- The repository root workflow (`.github/workflows/ci.yml`) is the source of truth for CI.
-- Backend integration coverage remains backend-owned (API + JSON storage), and frontend tests should stay lightweight.
-- External AI dependencies (Ollama/providers) are intentionally mocked/stubbed in tests for deterministic runs.
+CI runs:
 
-## Test Scope
+- Docs: markdown lint + local markdown link validation
+- Frontend: `npm ci`, `npm run lint`, `npm run test:run`
+- Backend: install `requirements-dev.txt`, then `pytest`
 
-### Unit Tests (fast, isolated)
+## Backend Tests
 
-- Backend pure logic:
-  - `/Users/jordanheckler/dugout-app/backend/tests/unit/test_stats_utils.py`
-- Frontend pure mapping logic:
-  - `/Users/jordanheckler/dugout-app/dugout-lineup-manager-main/src/api/mappers.test.ts`
+Location:
 
-### Integration Tests (boundary-focused)
+- `backend/tests/unit/`
+- `backend/tests/integration/`
 
-- Backend API + storage boundary (FastAPI + JSON persistence):
-  - `/Users/jordanheckler/dugout-app/backend/tests/integration/test_player_lineup_flow.py`
-  - `/Users/jordanheckler/dugout-app/backend/tests/integration/test_game_stats_flow.py`
-  - `/Users/jordanheckler/dugout-app/backend/tests/integration/test_game_schedule_flow.py`
-  - `/Users/jordanheckler/dugout-app/backend/tests/integration/test_cors.py`
-- Frontend API boundary via mocked `fetch`:
-  - `/Users/jordanheckler/dugout-app/dugout-lineup-manager-main/src/api/client.test.ts`
+Current backend test files:
 
-### Component Tests (UI state transitions)
+- `backend/tests/unit/test_stats_utils.py`
+- `backend/tests/integration/test_player_lineup_flow.py`
+- `backend/tests/integration/test_game_schedule_flow.py`
+- `backend/tests/integration/test_game_stats_flow.py`
+- `backend/tests/integration/test_cors.py`
 
-- Frontend updater banner transition coverage:
-  - `/Users/jordanheckler/dugout-app/dugout-lineup-manager-main/src/components/UpdateBanner.test.tsx`
-
-### Not Tested Yet (by design)
-
-- Full browser E2E/UI drag-and-drop behavior:
-  - Deferred to keep baseline fast and deterministic; requires heavier tooling and fixture management.
-- Real network calls to Ollama or cloud AI providers:
-  - Deferred to avoid flaky CI and credential requirements.
-- Tauri packaging/release flows:
-  - Deferred from CI baseline because they are release concerns, not core correctness checks.
-
-## Folder Structure
-
-- Backend:
-  - `backend/tests/unit/`
-  - `backend/tests/integration/`
-  - `backend/tests/conftest.py`
-- Frontend:
-  - `dugout-lineup-manager-main/src/api/*.test.ts`
-  - `dugout-lineup-manager-main/src/components/*.test.tsx`
-
-## Run Tests Locally
-
-Backend:
+Run locally:
 
 ```bash
-cd /Users/jordanheckler/dugout-app/backend
-python3 -m venv venv
+cd backend
+python3.11 -m venv venv
 source venv/bin/activate
 pip install -r requirements-dev.txt
 pytest
 ```
 
-Optional backend marker filtering:
+Optional marker filtering:
 
 ```bash
 pytest -m unit
 pytest -m integration
 ```
 
-Frontend:
+## Frontend Tests
+
+Current frontend test files:
+
+- `dugout-lineup-manager-main/src/api/client.test.ts`
+- `dugout-lineup-manager-main/src/api/mappers.test.ts`
+- `dugout-lineup-manager-main/src/hooks/useGameConfig.test.ts`
+- `dugout-lineup-manager-main/src/pages/GameStats.test.tsx`
+- `dugout-lineup-manager-main/src/components/UpdateBanner.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/DugoutLayout.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/FieldDiagram.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/LineupCard.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/LyraPanel.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/PlayerCard.test.tsx`
+- `dugout-lineup-manager-main/src/components/dugout/PlayersSidebar.test.tsx`
+
+Run locally:
 
 ```bash
-cd /Users/jordanheckler/dugout-app/dugout-lineup-manager-main
+cd dugout-lineup-manager-main
 npm ci
 npm run lint
 npm run test:run
 ```
 
-## CI
+## Scope and Intent
 
-Workflow:
-- `/Users/jordanheckler/dugout-app/.github/workflows/ci.yml`
+- Unit tests cover deterministic logic and transformations.
+- Integration tests cover API and storage boundaries.
+- Frontend tests focus on API-client behavior and component state/render behavior.
 
-Triggers:
-- Pull requests
-- Pushes to `main`
+## Known Gaps
 
-Jobs:
-- `Frontend Checks`:
-  - `npm ci`
-  - `npm run lint`
-  - `npm run test:run`
-- `Backend Tests`:
-  - install Python dependencies from `requirements-dev.txt`
-  - `pytest`
-
-## How To Extend
-
-1. Add new backend unit tests under `backend/tests/unit/` for pure calculations and model transforms.
-2. Add backend integration tests under `backend/tests/integration/` for endpoint+storage behavior using the `client` fixture.
-3. Add frontend tests next to API/services/components in `dugout-lineup-manager-main/src/` and mock `fetch` for deterministic API-boundary checks.
-4. Keep tests deterministic:
-   - no real external network
-   - no shared mutable state across tests
-   - stable fixtures only
+- No browser-level E2E tests for full drag-and-drop workflows.
+- No live-network tests against real cloud AI providers in CI.
+- Tauri release packaging is not part of standard CI checks.

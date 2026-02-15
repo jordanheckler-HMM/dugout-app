@@ -1,73 +1,92 @@
-# Welcome to your Lovable project
+# Dugout Frontend
 
-## Project info
+Frontend application for Dugout, built with React, Vite, TypeScript, and Tauri.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## What This App Does
 
-## How can I edit this code?
+- Manage player roster data
+- Build batting lineups and defensive field assignments
+- Save and load lineup configurations
+- Manage game schedule and game-level stats
+- Use AI assistance for coaching analysis and chat
+- Check and install desktop app updates (Tauri updater)
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS + shadcn/ui
+- Zustand + TanStack Query
+- Tauri 2 (desktop packaging)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Prerequisites
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js 20+
+- npm
+- Backend API running at `http://localhost:8100`
 
-**Use your preferred IDE**
+For Tauri development/builds:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Rust toolchain
+- Platform prerequisites from Tauri docs
+- A backend sidecar binary (see `build:sidecar`)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Local Development
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cd dugout-lineup-manager-main
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Vite is configured for:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- URL: `http://localhost:8123`
+- Strict port: enabled
 
-**Use GitHub Codespaces**
+## Backend Integration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The frontend uses a typed client in `src/api/client.ts`.
 
-## What technologies are used for this project?
+Current API base URL:
 
-This project is built with:
+- `http://localhost:8100` (hardcoded as `API_BASE`)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+If backend host/port changes, update `API_BASE` in `src/api/client.ts`.
 
-## How can I deploy this project?
+## Available Scripts
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- `npm run dev`: Start Vite development server
+- `npm run build`: Production web build
+- `npm run build:dev`: Development-mode web build
+- `npm run lint`: ESLint checks
+- `npm run test`: Run Vitest in watch mode
+- `npm run test:run`: Run Vitest once
+- `npm run tauri`: Run Tauri CLI commands
+- `npm run build:sidecar`: Build Python backend sidecar binary for Tauri
 
-## Can I connect a custom domain to my Lovable project?
+## Test and Quality Commands
 
-Yes, you can!
+```bash
+npm run lint
+npm run test:run
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Tauri Notes
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+For local desktop development:
+
+```bash
+npm run tauri dev
+```
+
+For production desktop builds, ensure sidecar/backend packaging is set up
+first, then run your Tauri build flow.
+
+## Related Docs
+
+- `../README.md` (repo overview)
+- `BACKEND_INTEGRATION.md`
+- `../QUICK_START.md`
+- `../TESTING.md`

@@ -1,173 +1,104 @@
-# Quick Start Guide
+# Quick Start
 
-## Running the Full Application
+This guide runs the full Dugout stack locally.
 
-### Step 1: Start Ollama (if not already running)
+## Prerequisites
+
+- Python 3.11 (required)
+- Node.js 20+
+- npm
+- Optional for local AI mode: Ollama (`http://localhost:11434`)
+
+## 1. Start Backend
+
+```bash
+cd backend
+./start.sh
+```
+
+If `python3` on your machine is not 3.11, use manual startup instead:
+
+```bash
+cd backend
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload --host 127.0.0.1 --port 8100
+```
+
+Backend endpoints:
+
+- API base: `http://localhost:8100`
+- OpenAPI docs: `http://localhost:8100/docs`
+
+## 2. (Optional) Prepare Local AI with Ollama
+
+If you plan to use local AI mode:
+
 ```bash
 ollama serve
-```
-
-### Step 2: Verify Lyra Model Exists
-```bash
-ollama list
-# Should show "lyra-coach:latest"
-```
-
-If not present, create it:
-```bash
 cd backend
 ollama create lyra-coach -f Modelfile
 ```
 
-### Step 3: Start Backend
-```bash
-cd backend
-./start.sh  # macOS/Linux
-# OR
-start.bat   # Windows
-```
+The backend checks for `lyra-coach:latest`.
 
-Backend will start on http://localhost:8100
+## 3. Start Frontend
 
-### Step 4: Start Frontend
+In a second terminal:
+
 ```bash
 cd dugout-lineup-manager-main
-npm install  # First time only
+npm install
 npm run dev
 ```
 
-Frontend will start on http://localhost:8123
+Frontend URL:
 
-### Step 5: Open in Browser
-Navigate to: http://localhost:8123
+- `http://localhost:8123`
 
-## What to Expect
+## 4. Verify Basic App Flow
 
-1. **Players Tab**: Players load from backend automatically
-2. **Lineup**: Drag players to lineup slots - changes save automatically
-3. **Field Diagram**: Assign defensive positions - syncs to backend
-4. **Lyra Panel**: Ask questions and get real AI coaching perspective
-5. **Save Configurations**: Store lineup/field setups by name
-
-## Verifying It Works
-
-### Check Players Persist
-1. Add a new player
-2. Refresh the browser
-3. Player should still be there
-
-### Check Lineup Persists
-1. Drag players to lineup
-2. Refresh the browser
-3. Lineup should be unchanged
-
-### Check Lyra Works
-1. Type a question in Lyra panel
-2. Should get thoughtful coaching perspective
-3. If error, check backend logs for Ollama connection
-
-## Troubleshooting
-
-### Backend Won't Start
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-### Frontend Shows Connection Error
-- Check backend is running: `curl http://localhost:8100/health`
-- Check CORS is configured for your frontend port
-- Check browser console for specific error
-
-### Lyra Doesn't Respond
-```bash
-# Check Ollama is running
-curl http://localhost:11434/api/tags
-
-# Check lyra-coach model exists
-ollama list
-
-# Test backend health endpoint
-curl http://localhost:8100/health
-```
-
-### Data Not Persisting
-- Check `backend/data/` directory exists
-- Check file permissions on data directory
-- Check backend logs for write errors
-
-## File Locations
-
-- **Backend**: `/backend/`
-- **Frontend**: `/dugout-lineup-manager-main/`
-- **Data Storage**: `/backend/data/` (JSON files)
-- **API Docs**: http://localhost:8100/docs (when backend running)
+1. Open `http://localhost:8123`
+2. Add or edit players in the roster
+3. Assign lineup slots and field positions
+4. Save a configuration
+5. Create a game and enter game stats
+6. Open AI panel and send a prompt (local or cloud mode)
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│  Frontend (React/Vite)                      │
-│  http://localhost:5173                      │
-│                                             │
-│  - src/api/client.ts (API calls)            │
-│  - src/hooks/usePlayers.ts (data)           │
-│  - src/hooks/useGameConfig.ts (lineup)      │
-│  - src/components/dugout/LyraPanel.tsx (AI) │
-└─────────────────┬───────────────────────────┘
-                  │ HTTP REST
-                  ▼
-┌─────────────────────────────────────────────┐
-│  Backend (FastAPI)                          │
-│  http://localhost:8100                      │
-│                                             │
-│  - main.py (REST endpoints)                 │
-│  - storage.py (JSON persistence)            │
-│  - ollama_client.py (AI integration)        │
-└─────────────┬──────────┬────────────────────┘
-              │          │
-              ▼          ▼
-    ┌──────────────┐  ┌──────────────┐
-    │ JSON Storage │  │    Ollama    │
-    │ backend/data/│  │ localhost:   │
-    │              │  │   11434      │
-    │ players.json │  │              │
-    │ lineup.json  │  │ lyra-coach   │
-    │ field.json   │  │   model      │
-    │ configs.json │  │              │
-    └──────────────┘  └──────────────┘
+```text
+Frontend (React/Vite, :8123)
+  -> API Client (src/api/client.ts)
+  -> Backend (FastAPI, :8100)
+     -> JSON Storage (backend/data/*.json)
+     -> AI Providers
+        - Ollama (default local mode, :11434)
+        - OpenAI (optional cloud mode)
+        - Anthropic (optional cloud mode)
 ```
 
-## Next Steps
+## Common Issues
 
-1. **Add Players**: Use the sidebar to add your team roster
-2. **Build Lineup**: Drag players into batting order
-3. **Set Positions**: Assign defensive positions on field diagram
-4. **Ask Lyra**: Get AI perspective on your lineup choices
-5. **Save Config**: Save different lineup arrangements by name
+### Frontend cannot reach backend
 
-## API Reference
+- Confirm backend is running: `curl http://localhost:8100/health`
+- Confirm frontend is on `http://localhost:8123`
+- Confirm `API_BASE` in `dugout-lineup-manager-main/src/api/client.ts` is `http://localhost:8100`
 
-See full API docs at: http://localhost:8100/docs
+### Local AI request fails
 
-Key endpoints:
-- `GET /players` - List all players
-- `POST /players` - Add new player
-- `PUT /lineup` - Update batting order
-- `PUT /field` - Update field positions
-- `POST /lyra/analyze` - Get AI coaching perspective
-- `POST /configurations` - Save lineup configuration
+- Confirm Ollama is running: `curl http://localhost:11434/api/tags`
+- Confirm model exists: `ollama list` (look for `lyra-coach:latest`)
 
-## Local-First Guarantees
+### Port conflict on backend
 
-✅ No cloud services or external APIs  
-✅ No authentication required  
-✅ All data stored locally in JSON  
-✅ AI runs on your machine via Ollama  
-✅ Works completely offline (except Ollama model download)  
-✅ Your data never leaves your computer  
+Run backend on another port:
 
-Enjoy coaching! 🧢⚾
+```bash
+cd backend
+uvicorn main:app --reload --host 127.0.0.1 --port 8101
+```
+
+Then update frontend `API_BASE` accordingly.

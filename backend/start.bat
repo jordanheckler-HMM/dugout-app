@@ -4,21 +4,41 @@ REM Quick start script for Dugout Baseball Coaching Backend (Windows)
 echo 🧢 Starting Dugout Baseball Coaching Backend...
 echo.
 
-REM Check if Python is installed
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo ❌ Error: Python is not installed
-    echo Please install Python 3.11 or higher
-    pause
-    exit /b 1
+set "PYTHON_CMD="
+
+REM Prefer Python 3.11 via py launcher
+py -3.11 --version >nul 2>&1
+if not errorlevel 1 (
+    set "PYTHON_CMD=py -3.11"
+) else (
+    REM Fallback to python if it resolves to 3.11
+    python --version >nul 2>&1
+    if errorlevel 1 (
+        echo ❌ Error: Python is not installed
+        echo Please install Python 3.11
+        pause
+        exit /b 1
+    )
+
+    for /f %%v in ('python -c "import sys; print(f\"{sys.version_info[0]}.{sys.version_info[1]}\")"') do set "PYTHON_VERSION=%%v"
+    if not "%PYTHON_VERSION%"=="3.11" (
+        echo ❌ Error: Python 3.11 is required
+        echo Found Python %PYTHON_VERSION%
+        echo Install Python 3.11 or use py -3.11
+        pause
+        exit /b 1
+    )
+
+    set "PYTHON_CMD=python"
 )
 
-echo ✓ Python is installed
+for /f %%v in ('%PYTHON_CMD% -c "import sys; print(f\"{sys.version_info[0]}.{sys.version_info[1]}\")"') do set "PYTHON_VERSION=%%v"
+echo ✓ Python version: %PYTHON_VERSION%
 
 REM Check if virtual environment exists
 if not exist "venv" (
     echo 📦 Creating virtual environment...
-    python -m venv venv
+    %PYTHON_CMD% -m venv venv
 )
 
 REM Activate virtual environment

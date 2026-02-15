@@ -7,6 +7,25 @@ on:
       - main
 
 jobs:
+  docs:
+    name: Docs Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: |
+            **/*.md
+            !**/node_modules/**
+            !backend/venv/**
+            !backend/venv311/**
+
+      - name: Check markdown links
+        run: python .github/scripts/check_markdown_links.py
+
   frontend:
     name: Frontend Checks
     runs-on: ubuntu-latest

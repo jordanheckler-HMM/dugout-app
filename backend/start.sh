@@ -4,21 +4,31 @@
 echo "🧢 Starting Dugout Baseball Coaching Backend..."
 echo ""
 
-# Check if Python 3.11+ is installed
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Error: Python 3 is not installed"
-    echo "Please install Python 3.11 or higher"
+# Prefer python3.11 when available and enforce 3.11 for compatibility
+if command -v python3.11 &> /dev/null; then
+    PYTHON_CMD="python3.11"
+elif command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+else
+    echo "❌ Error: Python is not installed"
+    echo "Please install Python 3.11"
     exit 1
 fi
 
 # Check Python version
-PYTHON_VERSION=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
+if [ "$PYTHON_VERSION" != "3.11" ]; then
+    echo "❌ Error: Python 3.11 is required (found $PYTHON_VERSION via $PYTHON_CMD)"
+    echo "Please install Python 3.11 and try again."
+    exit 1
+fi
+
 echo "✓ Python version: $PYTHON_VERSION"
 
 # Check if virtual environment exists
 if [ ! -d "venv" ]; then
     echo "📦 Creating virtual environment..."
-    python3 -m venv venv
+    $PYTHON_CMD -m venv venv
 fi
 
 # Activate virtual environment
