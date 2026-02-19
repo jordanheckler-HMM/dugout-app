@@ -93,6 +93,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: dugout-lineup-manager-main
+          tauriScript: npm run tauri
+          includeUpdaterJson: true
           tagName: ${{ steps.release_tag.outputs.tag }}
           releaseName: Dugout ${{ steps.release_tag.outputs.tag }}
           releaseBody: Automated release for Dugout.
