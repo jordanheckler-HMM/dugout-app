@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dugout",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "identifier": "com.dugout.manager",
   "build": {
     "frontendDist": "../dist",
@@ -41,7 +41,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY1RDk2NTgxRDY1MzIxN0YKUldSL0lWUFdnV1haWmRVQzMrVkF0R0NsRzVWeU5keDJ2MEkxNWNrYkd6MzZIK0Qwb1NySklOL2UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQjYxMjc3NkFGN0NGNkIKUldScnovZHFkeEsyN0Y5WWhXUG9TaHQ1c1d2blJBTDRaR2wrK3BDVUVvQmsrQ3J2eENHUTdvNmkK",
       "endpoints": [
         "https://github.com/jordanheckler-HMM/dugout-app/releases/latest/download/latest.json"
       ]
