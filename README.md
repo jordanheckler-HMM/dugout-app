@@ -8,7 +8,8 @@ positions, game schedules, and game stats, with optional AI assistance.
 
 - `dugout-lineup-manager-main/`: Frontend app (React, Vite, TypeScript, Tauri)
 - `backend/`: Backend API (FastAPI, JSON file storage)
-- `data/`: Seed/default data used by local workflows
+- `backend/data/`: Default JSON storage path when backend is started from `backend/`
+- `data/`: Repository-level sample/seed snapshot (not used by default backend startup)
 - `QUICK_START.md`: End-to-end startup guide
 - `TESTING.md`: Test strategy and commands
 
@@ -20,8 +21,8 @@ positions, game schedules, and game stats, with optional AI assistance.
 - Game scheduling and per-game stat entry
 - Season stat aggregation
 - AI assistant support:
-  - Local mode via Ollama (`lyra-coach:latest`)
-  - Cloud mode via OpenAI or Anthropic
+  - `POST /lyra/analyze`: Ollama local mode (`lyra-coach:latest`)
+  - `POST /lyra/chat/stream`: Ollama, OpenAI, or Anthropic based on AI settings
 
 ## Prerequisites
 
@@ -93,6 +94,7 @@ Local desktop build flow:
 ```bash
 cd dugout-lineup-manager-main
 npm ci
+# requires backend deps + pyinstaller available in your Python environment
 npm run build:sidecar
 npm run build
 ```
@@ -101,6 +103,7 @@ Signed Tauri build helper:
 
 ```bash
 cd dugout-lineup-manager-main
+# this helper does not build the backend sidecar; run `npm run build:sidecar` first
 ./build_dugout.sh "<TAURI_SIGNING_PRIVATE_KEY>"
 ```
 

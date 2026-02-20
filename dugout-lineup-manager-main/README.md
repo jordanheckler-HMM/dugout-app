@@ -9,7 +9,7 @@ Frontend application for Dugout, built with React, Vite, TypeScript, and Tauri.
 - Save and load lineup configurations
 - Manage game schedule and game-level stats
 - Use AI assistance for coaching analysis and chat
-- Check and install desktop app updates (Tauri updater)
+- Check and install desktop app updates (Tauri updater; desktop runtime only)
 
 ## Tech Stack
 
@@ -81,8 +81,21 @@ For local desktop development:
 npm run tauri dev
 ```
 
+For desktop packaging:
+
+- Build the backend sidecar first: `npm run build:sidecar`
+- `build_dugout.sh` signs/builds the Tauri bundle but does not build the
+  sidecar binary
+
 For production desktop builds, ensure sidecar/backend packaging is set up
 first, then run your Tauri build flow.
+
+## Runtime Side Effects
+
+- On app startup, `useEcosystemInit` initializes a shared directory at
+  `~/.hymetalab/` (config/models/data/logs structure).
+- In Tauri desktop runtime, the app attempts to launch a backend sidecar and
+  sets `DUGOUT_DATA_DIR` for that sidecar process.
 
 ## Related Docs
 

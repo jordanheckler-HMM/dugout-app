@@ -32,6 +32,11 @@ Current backend test files:
 - `backend/tests/integration/test_game_stats_flow.py`
 - `backend/tests/integration/test_cors.py`
 
+Notes:
+
+- `backend/test_backend.py` is a manual smoke script and is not part of the
+  pytest suite (`pytest.ini` sets `testpaths = tests`).
+
 Run locally:
 
 ```bash

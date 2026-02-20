@@ -11,7 +11,9 @@ The backend is local-first by default and persists application state to JSON fil
 - Saved lineup configurations
 - Game schedule CRUD
 - Per-game stat entry and season stat aggregation
-- AI endpoints for lineup analysis and streaming chat
+- AI endpoints:
+  - `POST /lyra/analyze`: Ollama-only lineup analysis
+  - `POST /lyra/chat/stream`: streaming chat via Ollama/OpenAI/Anthropic
 - AI settings endpoints for provider/model configuration
 
 ## Prerequisites
@@ -75,8 +77,10 @@ The backend checks for `lyra-coach:latest`.
 
 ## Environment Variables
 
-- `DUGOUT_DATA_DIR`: Override data directory (default: `data`)
-- `DUGOUT_BACKEND_PORT`: Startup display/runtime port fallback (default: `8100`)
+- `DUGOUT_DATA_DIR`: Override JSON storage directory (default: `data`, relative
+  to the backend process working directory)
+- `DUGOUT_BACKEND_PORT`: Used when running `python main.py` and for startup log
+  port display. `start.sh` and explicit `uvicorn --port` take precedence.
 
 ## API Endpoints
 
@@ -135,7 +139,14 @@ The backend checks for `lyra-coach:latest`.
 
 ## Data Storage
 
-Default storage directory: `backend/data/`
+Default storage directory: `data/` (relative to backend process working
+directory).
+
+In the standard quick-start flow (`cd backend && ./start.sh`), this resolves to
+`backend/data/`.
+
+In Tauri desktop builds, the sidecar sets `DUGOUT_DATA_DIR` to the app data
+directory at runtime.
 
 Files:
 

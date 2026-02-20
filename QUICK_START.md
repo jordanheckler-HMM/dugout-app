@@ -43,6 +43,9 @@ ollama create lyra-coach -f Modelfile
 
 The backend checks for `lyra-coach:latest`.
 
+If you plan to use cloud AI mode, configure provider/API key in the app's AI
+settings panel before sending prompts.
+
 ## 3. Start Frontend
 
 In a second terminal:
@@ -72,7 +75,7 @@ Frontend URL:
 Frontend (React/Vite, :8123)
   -> API Client (src/api/client.ts)
   -> Backend (FastAPI, :8100)
-     -> JSON Storage (backend/data/*.json)
+     -> JSON Storage (`data/*.json` relative to backend working directory)
      -> AI Providers
         - Ollama (default local mode, :11434)
         - OpenAI (optional cloud mode)

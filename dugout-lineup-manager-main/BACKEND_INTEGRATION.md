@@ -8,7 +8,7 @@ This document describes the current frontend-to-backend contract for Dugout.
 Frontend (React/Vite, http://localhost:8123)
   -> API Client (src/api/client.ts)
   -> Backend (FastAPI, http://localhost:8100)
-     -> JSON storage (backend/data/*.json)
+     -> JSON storage (`data/*.json` relative to backend working directory)
      -> AI providers (Ollama/OpenAI/Anthropic)
 ```
 
@@ -61,7 +61,7 @@ If the backend port or host changes, update this constant.
 
 ### AI
 
-- `POST /lyra/analyze` (lineup analysis)
+- `POST /lyra/analyze` (lineup analysis, Ollama-only)
 - `POST /lyra/chat/stream` (streaming chat)
 - `GET /settings/ai`
 - `PUT /settings/ai`
@@ -82,7 +82,11 @@ Examples:
 
 ## Persistence
 
-All writes are persisted by backend JSON storage in `backend/data/`:
+All writes are persisted by backend JSON storage in `data/` relative to the
+backend process working directory.
+
+In the default local flow (`cd backend` before starting API), this resolves to
+`backend/data/`.
 
 - `players.json`
 - `lineup.json`
