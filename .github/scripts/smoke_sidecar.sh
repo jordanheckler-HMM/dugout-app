@@ -32,31 +32,63 @@ if curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; the
 fi
 
 echo "Starting sidecar: $BIN"
+IS_WINDOWS=false
 case "$(uname -s)" in
   MINGW* | MSYS* | CYGWIN*)
-    "$BIN" >"$LOG_DIR/sidecar.log" 2>&1 &
-    PID=$!
-    ;;
-  *)
-    setsid "$BIN" >"$LOG_DIR/sidecar.log" 2>&1 &
-    PID=$!
+    IS_WINDOWS=true
     ;;
 esac
 
+if [[ "$IS_WINDOWS" == true ]]; then
+  # Git Bash waits forever if a native console exe is backgrounded with &.
+  # Start-Process returns as soon as the process exists.
+  WIN_BIN="$(cygpath -w "$BIN")"
+  WIN_OUT="$(cygpath -w "$LOG_DIR/sidecar.out.log")"
+  WIN_ERR="$(cygpath -w "$LOG_DIR/sidecar.err.log")"
+  cat >"$LOG_DIR/start-sidecar.ps1" <<EOF
+\$p = Start-Process -FilePath '${WIN_BIN}' -PassThru -WindowStyle Hidden -RedirectStandardOutput '${WIN_OUT}' -RedirectStandardError '${WIN_ERR}'
+Write-Output \$p.Id
+EOF
+  PID="$(powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$LOG_DIR/start-sidecar.ps1")")"
+  PID="$(printf '%s' "$PID" | tr -d '\r' | awk 'NF{line=$0} END{print line}')"
+  echo "Sidecar pid: ${PID:-<empty>}"
+  if [[ -z "$PID" ]]; then
+    echo "Failed to start the Windows sidecar."
+    exit 1
+  fi
+else
+  setsid "$BIN" >"$LOG_DIR/sidecar.log" 2>&1 &
+  PID=$!
+fi
+
+sidecar_alive() {
+  if [[ "$IS_WINDOWS" == true ]]; then
+    tasklist //FI "PID eq ${PID}" | grep -q "${PID}"
+  else
+    kill -0 "$PID" 2>/dev/null
+  fi
+}
+
 cleanup() {
-  local uname_s
-  uname_s="$(uname -s)"
-  case "$uname_s" in
-    MINGW* | MSYS* | CYGWIN*)
-      taskkill //F //T //PID "$PID" >/dev/null 2>&1 || true
-      ;;
-    *)
-      kill -- -"$PID" >/dev/null 2>&1 || kill "$PID" >/dev/null 2>&1 || true
-      ;;
-  esac
-  wait "$PID" >/dev/null 2>&1 || true
+  if [[ "$IS_WINDOWS" == true ]]; then
+    taskkill //F //T //PID "$PID" >/dev/null 2>&1 || true
+  else
+    kill -- -"$PID" >/dev/null 2>&1 || kill "$PID" >/dev/null 2>&1 || true
+    wait "$PID" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
+
+print_sidecar_log() {
+  if [[ "$IS_WINDOWS" == true ]]; then
+    echo "--- stdout ---"
+    cat "$LOG_DIR/sidecar.out.log" 2>/dev/null || true
+    echo "--- stderr ---"
+    cat "$LOG_DIR/sidecar.err.log" 2>/dev/null || true
+  else
+    cat "$LOG_DIR/sidecar.log" 2>/dev/null || true
+  fi
+}
 
 deadline=$((SECONDS + 90))
 while (( SECONDS < deadline )); do
@@ -69,14 +101,14 @@ while (( SECONDS < deadline )); do
       exit 0
     fi
   fi
-  if ! kill -0 "$PID" 2>/dev/null; then
+  if ! sidecar_alive; then
     echo "Sidecar exited before answering /health. Log:"
-    cat "$LOG_DIR/sidecar.log" || true
+    print_sidecar_log
     exit 1
   fi
   sleep 2
 done
 
 echo "Timed out waiting for sidecar /health. Log:"
-cat "$LOG_DIR/sidecar.log" || true
+print_sidecar_log
 exit 1
