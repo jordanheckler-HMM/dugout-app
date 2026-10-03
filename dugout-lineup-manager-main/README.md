@@ -64,7 +64,8 @@ If backend host/port changes, update `API_BASE` in `src/api/client.ts`.
 - `npm run test`: Run Vitest in watch mode
 - `npm run test:run`: Run Vitest once
 - `npm run tauri`: Run Tauri CLI commands
-- `npm run build:sidecar`: Build Python backend sidecar binary for Tauri
+- `npm run build:sidecar`: Build the Python backend sidecar for Tauri
+  (macOS, Windows, and Linux)
 
 ## Test and Quality Commands
 

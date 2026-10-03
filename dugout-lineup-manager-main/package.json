@@ -1,13 +1,13 @@
 {
   "name": "vite_react_shadcn_ts",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:sidecar": "chmod +x scripts/build_sidecar.sh && ./scripts/build_sidecar.sh",
+    "build:sidecar": "node scripts/build_sidecar.mjs",
     "tauri": "tauri",
     "lint": "eslint .",
     "test": "vitest",

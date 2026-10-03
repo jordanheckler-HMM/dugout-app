@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing git tag to release (example: v0.1.1)"
+        description: "Existing git tag to release (example: v0.1.6)"
         required: true
         type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - "v*"
@@ -15,12 +20,13 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build and Release (macOS)
-    runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: dugout-lineup-manager-main
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.release_tag.outputs.tag }}
+      prerelease: ${{ steps.release_tag.outputs.prerelease }}
+      notes: ${{ steps.release_tag.outputs.notes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +35,8 @@ jobs:
 
       - name: Resolve release tag
         id: release_tag
+        env:
+          INPUT_PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
@@ -37,12 +45,104 @@ jobs:
           fi
 
           if [[ ! "$TAG" =~ ^v[0-9] ]]; then
-            echo "❌ Invalid release tag: '$TAG'. Use a semver tag like v0.1.1."
+            echo "Invalid release tag: '$TAG'. Use a semver tag like v0.1.6."
             exit 1
           fi
 
+          # Hyphenated tags (v0.1.6-rc.1) stay prereleases so they do not
+          # replace the stable latest.json used by the updater.
+          PRERELEASE=false
+          if [[ "$TAG" == *-* || "$INPUT_PRERELEASE" == "true" ]]; then
+            PRERELEASE=true
+          fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Using release tag: $TAG"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<NOTES_EOF"
+            cat .github/release-notes.md
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Using release tag: $TAG (prerelease=$PRERELEASE)"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release_tag.outputs.tag }}
+          PRERELEASE: ${{ steps.release_tag.outputs.prerelease }}
+        run: |
+          TARGET_SHA="$(git rev-parse HEAD)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$PRERELEASE" = "true" ]; then
+              gh release edit "$TAG" --prerelease --notes-file .github/release-notes.md
+            else
+              gh release edit "$TAG" --latest --notes-file .github/release-notes.md
+            fi
+          else
+            CREATE_ARGS=(
+              release create "$TAG"
+              --title "Dugout $TAG"
+              --notes-file .github/release-notes.md
+              --target "$TARGET_SHA"
+            )
+            if [ "$PRERELEASE" = "true" ]; then
+              CREATE_ARGS+=(--prerelease)
+            fi
+            gh "${CREATE_ARGS[@]}"
+          fi
+          gh release view "$TAG" --json url,isPrerelease,isDraft --jq .
+
+  release:
+    name: Build (${{ matrix.target }})
+    needs: prepare
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - platform: macos-15-intel
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            # Tauri v2 links WebKitGTK 4.1. Skip rpm; publish .deb and .AppImage.
+            target: x86_64-unknown-linux-gnu
+            args: --target x86_64-unknown-linux-gnu --bundles deb,appimage
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: --target x86_64-pc-windows-msvc
+    defaults:
+      run:
+        working-directory: dugout-lineup-manager-main
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev \
+            build-essential \
+            file \
+            curl \
+            wget \
+            xvfb \
+            dbus-x11 \
+            libfuse2
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,6 +158,13 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: dugout-lineup-manager-main/src-tauri
 
       - name: Install frontend dependencies
         run: npm ci
@@ -70,18 +177,22 @@ jobs:
       - name: Build backend sidecar
         run: npm run build:sidecar
 
+      - name: Smoke test sidecar health
+        if: matrix.platform == 'windows-latest' || matrix.platform == 'ubuntu-22.04'
+        run: bash ../.github/scripts/smoke_sidecar.sh "src-tauri/binaries/backend-sidecar-${{ matrix.target }}${{ matrix.platform == 'windows-latest' && '.exe' || '' }}"
+
       - name: Validate signing secrets
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "❌ Missing TAURI_SIGNING_PRIVATE_KEY secret."
+            echo "Missing TAURI_SIGNING_PRIVATE_KEY secret."
             exit 1
           fi
 
           if [ -z "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
-            echo "⚠️ TAURI_SIGNING_PRIVATE_KEY_PASSWORD is empty."
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD is empty."
             echo "If your key has no password, this is okay. Otherwise set the secret."
           fi
 
@@ -95,8 +206,31 @@ jobs:
           projectPath: dugout-lineup-manager-main
           tauriScript: npm run tauri
           includeUpdaterJson: true
-          tagName: ${{ steps.release_tag.outputs.tag }}
-          releaseName: Dugout ${{ steps.release_tag.outputs.tag }}
-          releaseBody: Automated release for Dugout.
+          updaterJsonPreferNsis: false
+          retryAttempts: 3
+          args: ${{ matrix.args }}
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: Dugout ${{ needs.prepare.outputs.tag }}
+          releaseBody: ${{ needs.prepare.outputs.notes }}
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
+
+      - name: Smoke test Linux AppImage
+        if: matrix.platform == 'ubuntu-22.04'
+        run: bash ../.github/scripts/smoke_appimage.sh src-tauri/target
+
+  updater-manifest:
+    name: Publish merged latest.json
+    needs: [prepare, release]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      - name: Merge updater manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: python3 .github/scripts/merge_latest_json.py
