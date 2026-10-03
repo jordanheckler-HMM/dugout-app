@@ -254,18 +254,6 @@
     border-radius: 1px;
   }
 
-  .window-button {
-    width: 46px;
-    height: 100%;
-    display: grid;
-    place-items: center;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .window-button svg { width: 14px; height: 14px; }
-  .window-button:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
-  .window-button-close:hover { background: hsl(0 72% 46%); color: white; }
-
   .app-nav {
     position: relative;
     display: flex;

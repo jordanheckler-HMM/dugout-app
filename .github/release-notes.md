@@ -6,6 +6,11 @@ This build is a local clubhouse: squad cards, a depth chart, a shared
 lineup and diamond, DH and no-DH modes, and a chemistry meter scored
 from the positions you enter. There is no cloud sync.
 
+0.1.7 restores the operating system's title bar. macOS shows the red,
+yellow, and green window buttons again. Windows and Linux show their
+normal minimize, resize, and close buttons. The window can be dragged
+from the title bar and from the Dugout header.
+
 ## Downloads
 
 - macOS Apple Silicon: `.dmg`
