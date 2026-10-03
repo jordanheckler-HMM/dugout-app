@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { isTauri } from '@tauri-apps/api/core';
 
 export interface UpdateStatus {
     checking: boolean;
@@ -30,6 +31,8 @@ export function useAppUpdater() {
      * Check for available updates
      */
     const checkForUpdate = useCallback(async () => {
+        if (!isTauri()) return;
+
         try {
             setStatus((prev) => ({ ...prev, checking: true, error: undefined }));
 
@@ -126,7 +129,7 @@ export function useAppUpdater() {
 
     // Auto-check on mount (once)
     useEffect(() => {
-        if (hasChecked.current) return;
+        if (hasChecked.current || !isTauri()) return;
         hasChecked.current = true;
 
         // Slight delay so the app loads before we hit the network

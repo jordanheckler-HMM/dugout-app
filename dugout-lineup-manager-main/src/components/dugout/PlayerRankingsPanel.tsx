@@ -6,7 +6,7 @@
  * with actionable performance data.
  */
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { TrendingUp, Target, Users } from 'lucide-react';
 import { Player } from '@/types/player';
 import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
@@ -31,11 +31,12 @@ interface PlayerWithStats {
 // Component to fetch stats for a single player
 function PlayerStatsWrapper({ player, onStatsLoaded }: { 
   player: Player; 
-  onStatsLoaded: (playerId: string, stats: PlayerWithStats | null) => void;
+  onStatsLoaded: (playerId: string, stats: PlayerWithStats | 'error' | null) => void;
 }) {
-  const { stats } = usePlayerSeasonStats(player.id);
+  const { stats, loading, error } = usePlayerSeasonStats(player.id);
 
-  useMemo(() => {
+  useEffect(() => {
+    if (loading) return;
     if (stats) {
       onStatsLoaded(player.id, {
         player,
@@ -48,30 +49,29 @@ function PlayerStatsWrapper({ player, onStatsLoaded }: {
         inningsPitched: stats.pitching.ip,
       });
     } else {
-      onStatsLoaded(player.id, null);
+      onStatsLoaded(player.id, error ? 'error' : null);
     }
-  }, [stats, player, onStatsLoaded]);
+  }, [stats, loading, error, player, onStatsLoaded]);
 
   return null;
 }
 
 function useAllPlayerStats(players: Player[]) {
-  const [playerStats, setPlayerStats] = React.useState<Map<string, PlayerWithStats>>(new Map());
+  const [playerStats, setPlayerStats] = React.useState<Map<string, PlayerWithStats | 'error' | null>>(new Map());
 
-  const handleStatsLoaded = React.useCallback((playerId: string, stats: PlayerWithStats | null) => {
+  const handleStatsLoaded = React.useCallback((playerId: string, stats: PlayerWithStats | 'error' | null) => {
     setPlayerStats(prev => {
+      if (prev.has(playerId) && prev.get(playerId) === stats) return prev;
       const next = new Map(prev);
-      if (stats) {
-        next.set(playerId, stats);
-      } else {
-        next.delete(playerId);
-      }
+      next.set(playerId, stats);
       return next;
     });
   }, []);
 
   return useMemo(() => {
-    const allStats = Array.from(playerStats.values());
+    const allStats = players
+      .map(player => playerStats.get(player.id))
+      .filter((value): value is PlayerWithStats => Boolean(value && value !== 'error'));
 
     // Top hitters by AVG (minimum 3 at-bats)
     const topHitters = allStats
@@ -89,20 +89,25 @@ function useAllPlayerStats(players: Player[]) {
     const teamHitters = allStats.filter(p => (p.atBats ?? 0) > 0);
     const teamPitchers = allStats.filter(p => (p.inningsPitched ?? 0) > 0);
 
-    const teamAvg = teamHitters.length > 0
-      ? teamHitters.reduce((sum, p) => sum + (p.avg ?? 0), 0) / teamHitters.length
-      : 0;
-
-    const teamEra = teamPitchers.length > 0
-      ? teamPitchers.reduce((sum, p) => sum + (p.era ?? 0), 0) / teamPitchers.length
-      : 0;
+    const totalAtBats = teamHitters.reduce((sum, p) => sum + (p.atBats ?? 0), 0);
+    const totalHits = teamHitters.reduce((sum, p) => sum + (p.hits ?? 0), 0);
+    const totalEarnedRuns = teamPitchers.reduce((sum, p) => sum + (p.earnedRuns ?? 0), 0);
+    // Baseball IP decimals count outs: 4.2 means four innings and two outs.
+    const totalInnings = teamPitchers.reduce((sum, p) => {
+      const ip = p.inningsPitched ?? 0;
+      return sum + Math.trunc(ip) + Math.round((ip % 1) * 10) / 3;
+    }, 0);
+    const teamAvg = totalAtBats > 0 ? totalHits / totalAtBats : null;
+    const teamEra = totalInnings > 0 ? totalEarnedRuns * 9 / totalInnings : null;
 
     return {
       topHitters,
       topPitchers,
       teamAvg,
       teamEra,
-      totalPlayers: allStats.length,
+      totalPlayers: allStats.filter(p => p.gamesPlayed > 0).length,
+      isLoading: players.some(player => !playerStats.has(player.id)),
+      hasError: players.some(player => playerStats.get(player.id) === 'error'),
       handleStatsLoaded,
       players,
     };
@@ -123,7 +128,7 @@ function StatBadge({ label, value, isGood }: { label: string; value: string; isG
 }
 
 export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
-  const { topHitters, topPitchers, teamAvg, teamEra, totalPlayers, handleStatsLoaded, players: playersList } = useAllPlayerStats(players);
+  const { topHitters, topPitchers, teamAvg, teamEra, totalPlayers, isLoading, hasError, handleStatsLoaded, players: playersList } = useAllPlayerStats(players);
 
   return (
     <div className="h-full flex flex-col bg-lyra text-lyra-foreground">
@@ -149,6 +154,16 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4">
+          {hasError && (
+            <p role="alert" className="rounded-md border border-amber-400/40 bg-amber-400/10 p-2 text-xs leading-relaxed text-lyra-foreground">
+              Some season stats could not load. Team totals may be incomplete.
+            </p>
+          )}
+          {players.length === 0 && (
+            <p className="rounded-md border border-lyra-border p-3 text-xs leading-relaxed text-lyra-foreground/80">
+              Add players to see season leaders here.
+            </p>
+          )}
           
           {/* Top Hitters Section */}
           <div className="space-y-2">
@@ -182,7 +197,7 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-gold">
-                          {p.avg?.toFixed(3) || '.000'}
+                          {(p.avg ?? 0).toFixed(3).replace(/^0/, '')}
                         </div>
                         <div className="text-[10px] text-lyra-foreground/50">
                           AVG
@@ -208,7 +223,7 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
               </div>
             ) : (
               <p className="text-xs text-lyra-foreground/40 text-center py-3">
-                No hitting stats available yet
+                {isLoading ? 'Loading hitting stats…' : 'No hitting stats yet'}
               </p>
             )}
           </div>
@@ -271,7 +286,7 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
               </div>
             ) : (
               <p className="text-xs text-lyra-foreground/40 text-center py-3">
-                No pitching stats available yet
+                {isLoading ? 'Loading pitching stats…' : 'No pitching stats yet'}
               </p>
             )}
           </div>
@@ -292,7 +307,7 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                     Team AVG
                   </div>
                   <div className="text-base font-semibold text-lyra-foreground">
-                    {teamAvg > 0 ? teamAvg.toFixed(3) : '.000'}
+                    {teamAvg === null ? '—' : teamAvg.toFixed(3).replace(/^0/, '')}
                   </div>
                 </div>
                 <div>
@@ -300,7 +315,7 @@ export function PlayerRankingsPanel({ players }: PlayerRankingsPanelProps) {
                     Team ERA
                   </div>
                   <div className="text-base font-semibold text-lyra-foreground">
-                    {teamEra > 0 ? teamEra.toFixed(2) : '0.00'}
+                    {teamEra === null ? '—' : teamEra.toFixed(2)}
                   </div>
                 </div>
               </div>

@@ -2,7 +2,11 @@
 
 Dugout is a local-first baseball coaching application with a React frontend
 and a FastAPI backend. It helps coaches manage players, lineups, field
-positions, game schedules, and game stats, with optional AI assistance.
+positions, game schedules, and game stats.
+
+The desktop app stores data on the coach's computer. It currently has no
+program accounts, cloud sync, or shared team workspace. Those are separate
+requirements before selling a multi-coach service to a program.
 
 ## Repository Layout
 
@@ -20,16 +24,14 @@ positions, game schedules, and game stats, with optional AI assistance.
 - Save/load lineup configurations
 - Game scheduling and per-game stat entry
 - Season stat aggregation
-- AI assistant support:
-  - `POST /lyra/analyze`: Ollama local mode (`lyra-coach:latest`)
-  - `POST /lyra/chat/stream`: Ollama, OpenAI, or Anthropic based on AI settings
+- The Lyra panel is not part of the Dugout app interface. Legacy AI endpoints
+  remain in the backend for compatibility; the desktop workflow does not use them.
 
 ## Prerequisites
 
 - Node.js 20+
 - npm
 - Python 3.11 (required; CI uses 3.11)
-- Optional for local AI mode: Ollama running on `http://localhost:11434`
 
 ## Quick Start
 
@@ -56,16 +58,6 @@ npm run dev
 - Frontend: `http://localhost:8123`
 - Backend API docs: `http://localhost:8100/docs`
 
-1. Optional local AI setup (if using Ollama mode):
-
-```bash
-cd backend
-ollama serve
-ollama create lyra-coach -f Modelfile
-```
-
-The model is referenced by the app as `lyra-coach:latest`.
-
 ## Testing
 
 Backend:
@@ -89,28 +81,58 @@ npm run test:run
 
 ## Desktop Build and Release
 
-Local desktop build flow:
+Local desktop build flow (run on each target operating system):
 
 ```bash
 cd dugout-lineup-manager-main
 npm ci
-# requires backend deps + pyinstaller available in your Python environment
+# requires Python 3.11, backend requirements, PyInstaller, and Rust
 npm run build:sidecar
-npm run build
+npm run tauri build
 ```
 
-Signed Tauri build helper:
+Updater-signed Tauri build helper:
 
 ```bash
 cd dugout-lineup-manager-main
-# this helper does not build the backend sidecar; run `npm run build:sidecar` first
-./build_dugout.sh "<TAURI_SIGNING_PRIVATE_KEY>"
+# first build the backend sidecar, then supply signing values through the
+# environment or a credential manager (never as a shell argument)
+./build_dugout.sh
 ```
 
 Automated release workflow:
 
 - `.github/workflows/release-tauri.yml`
-- Triggered by `v*` git tags or manual workflow dispatch
+- Builds macOS and Windows bundles from a version-matched `v*` tag
+- Creates a **draft** GitHub release for review; publishing the release is a
+  separate decision
+- A Windows installer and signed updater artifacts are not verified until that
+  workflow completes successfully on GitHub Actions
+- The workflow uses ad-hoc signing on macOS to avoid a damaged-app warning on
+  Apple Silicon. Apple Developer ID/notarization and Windows Authenticode
+  signing are not configured yet, so downloaded builds may show trust prompts.
+
+Pull requests also run `.github/workflows/desktop-preview.yml`, which builds
+unsigned Apple Silicon, Intel Mac, and Windows previews as Actions artifacts.
+These previews need an installed-app check on each operating system before
+distribution.
+
+## Data and Integration Boundaries
+
+- Installed desktop data is stored in Dugout's operating-system app data
+  directory as local JSON files. An install on a second computer does not
+  automatically see the first computer's roster or games.
+- There is no in-app backup or restore flow yet. Keep a copy of the app data
+  directory before moving devices or reinstalling.
+- The local backend listens on `127.0.0.1:8100`. It has no user authentication,
+  so treat the computer account and local data directory as the trust boundary.
+- HYMetaLab Supabase is **not connected** to Dugout. A future multi-program
+  service needs Dugout-specific program and membership records, access rules,
+  and an account flow before team data is uploaded.
+- Bench Coach MCP is **not connected**. A future optional practice-brief action
+  can preview aggregate inputs such as age tier, player count, and duration
+  before sending them. Player names, numbers, notes, and individual stats should
+  remain local unless a coach explicitly chooses a future sharing feature.
 
 ## Additional Documentation
 
@@ -119,3 +141,4 @@ Automated release workflow:
 - `backend/README.md`
 - `dugout-lineup-manager-main/README.md`
 - `dugout-lineup-manager-main/BACKEND_INTEGRATION.md`
+- `docs/DISTRIBUTION_AND_PROGRAMS.md`

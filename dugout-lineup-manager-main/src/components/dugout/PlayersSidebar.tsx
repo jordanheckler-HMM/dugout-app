@@ -15,6 +15,8 @@ interface PlayersSidebarProps {
   onUpdatePlayer: (id: string, updates: Partial<Player>) => Promise<void>;
   onRemovePlayer: (id: string) => Promise<void>;
   onDragPlayer: (playerId: string) => void;
+  selectedPlayerId?: string | null;
+  onSelectPlayer?: (playerId: string) => void;
 }
 
 type StatusFilter = 'all' | PlayerStatus;
@@ -26,7 +28,9 @@ export function PlayersSidebar({
   onAddPlayer,
   onUpdatePlayer,
   onRemovePlayer,
-  onDragPlayer
+  onDragPlayer,
+  selectedPlayerId,
+  onSelectPlayer
 }: PlayersSidebarProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -117,7 +121,7 @@ export function PlayersSidebar({
         </div>
 
         {/* Status filters */}
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-3 gap-1">
           {filterButtons.map(btn => (
             <button
               key={btn.value}
@@ -126,15 +130,15 @@ export function PlayersSidebar({
               aria-label={`Show ${btn.label.toLowerCase()} players`}
               aria-pressed={statusFilter === btn.value}
               className={cn(
-                'flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
+                'min-w-0 flex items-center justify-center gap-1 rounded px-1 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
                 statusFilter === btn.value
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
               )}
             >
-              {btn.icon}
-              {btn.label}
-              <span className="ml-1 opacity-60">
+              <span className="shrink-0">{btn.icon}</span>
+              <span className="truncate">{btn.label}</span>
+              <span className="opacity-60">
                 {statusCounts[btn.value as PlayerStatus] ?? players.length}
               </span>
             </button>
@@ -143,11 +147,29 @@ export function PlayersSidebar({
       </div>
 
       {/* Player list */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-2 space-y-3">
           {filteredPlayers.length === 0 ? (
-            <div className="text-center py-6 text-sidebar-foreground/50">
-              <p className="text-xs">No {statusFilter} players</p>
+            <div className="mx-2 rounded-lg border border-sidebar-border bg-sidebar-accent/30 px-4 py-6 text-center">
+              <Users className="mx-auto mb-2 h-6 w-6 text-sidebar-foreground/60" aria-hidden="true" />
+              <p className="text-sm font-medium">
+                {players.length === 0 ? 'Build your roster' : `No ${statusFilter} players`}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/70">
+                {players.length === 0
+                  ? 'Add a player to start building your lineup and field.'
+                  : 'Choose another status to see the rest of your roster.'}
+              </p>
+              {players.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingPlayer(true)}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-sidebar-primary px-3 py-2 text-xs font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  Add your first player
+                </button>
+              )}
             </div>
           ) : (
             groupOrder.map(groupName => {
@@ -181,6 +203,8 @@ export function PlayersSidebar({
                             player={player}
                             isActive={isActive}
                             onEdit={() => setEditingPlayer(player)}
+                            isSelected={selectedPlayerId === player.id}
+                            onSelect={onSelectPlayer ? () => onSelectPlayer(player.id) : undefined}
                           />
                         </div>
                       );

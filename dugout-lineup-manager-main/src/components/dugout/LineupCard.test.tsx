@@ -112,4 +112,27 @@ describe("LineupCard", () => {
     expect(onAddToBench).toHaveBeenCalledWith("player-1");
     expect(benchDropZone.className.includes("bg-accent/30")).toBe(false);
   });
+
+  it("offers a button to place a selected player without dragging", () => {
+    const onAssign = vi.fn();
+    render(
+      <LineupCard
+        lineup={lineup}
+        players={players}
+        fieldPositions={fieldPositions}
+        useDH
+        benchPlayerIds={[]}
+        onAssign={onAssign}
+        onRemove={vi.fn()}
+        onReorder={vi.fn()}
+        onAddToBench={vi.fn()}
+        draggingPlayerId={null}
+        onDragPlayer={vi.fn()}
+        selectedPlayerId="player-2"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Place selected player in batting spot 2" }));
+    expect(onAssign).toHaveBeenCalledWith("player-2", 2, null);
+  });
 });

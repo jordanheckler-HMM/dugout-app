@@ -16,10 +16,22 @@ permissions:
 
 jobs:
   release:
-    name: Build and Release (macOS)
-    runs-on: macos-latest
+    name: Build and Release (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - platform: macOS Apple Silicon
+            os: macos-latest
+          - platform: macOS Intel
+            os: macos-15-intel
+          - platform: Windows
+            os: windows-latest
     defaults:
       run:
+        shell: bash
         working-directory: dugout-lineup-manager-main
     steps:
       - name: Checkout
@@ -27,29 +39,24 @@ jobs:
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
 
-      - name: Resolve release tag
-        id: release_tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ github.event.inputs.tag }}"
-          else
-            TAG="${{ github.ref_name }}"
-          fi
-
-          if [[ ! "$TAG" =~ ^v[0-9] ]]; then
-            echo "❌ Invalid release tag: '$TAG'. Use a semver tag like v0.1.1."
-            exit 1
-          fi
-
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Using release tag: $TAG"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: dugout-lineup-manager-main/package-lock.json
+
+      - name: Resolve release tag
+        id: release_tag
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+        run: |
+          APP_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [ "$RELEASE_TAG" != "v$APP_VERSION" ]; then
+            echo "Release tag '$RELEASE_TAG' must match Tauri app version v$APP_VERSION."
+            exit 1
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -65,7 +72,7 @@ jobs:
       - name: Install backend build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ../backend/requirements.txt pyinstaller
+          python -m pip install -r ../backend/requirements.txt pyinstaller==6.18.0
 
       - name: Build backend sidecar
         run: npm run build:sidecar
@@ -85,18 +92,19 @@ jobs:
             echo "If your key has no password, this is okay. Otherwise set the secret."
           fi
 
-      - name: Build and publish Tauri release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri draft release
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         with:
           projectPath: dugout-lineup-manager-main
           tauriScript: npm run tauri
-          includeUpdaterJson: true
+          uploadUpdaterJson: true
           tagName: ${{ steps.release_tag.outputs.tag }}
           releaseName: Dugout ${{ steps.release_tag.outputs.tag }}
           releaseBody: Automated release for Dugout.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false

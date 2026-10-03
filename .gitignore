@@ -1,0 +1,22 @@
+# Frontend build output and installed dependencies
+node_modules/
+dist/
+dist-ssr/
+
+# Python environments and build artifacts
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+backend/.pyinstaller-cache/
+backend/.sidecar-build.*/
+backend/build/
+backend/dist/
+backend/*.spec
+
+# Tauri build output and generated sidecars
+dugout-lineup-manager-main/src-tauri/target/
+dugout-lineup-manager-main/src-tauri/binaries/backend-sidecar-*
+
+# Local OS files
+.DS_Store

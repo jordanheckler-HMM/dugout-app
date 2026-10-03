@@ -66,6 +66,7 @@ export function useGameConfig(players?: Player[]) {
   const [savedConfigs, setSavedConfigs] = useState<GameConfiguration[]>([]);
   const [currentConfigName, setCurrentConfigName] = useState('Untitled');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastDHPlayerId, setLastDHPlayerId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -128,8 +129,10 @@ export function useGameConfig(players?: Player[]) {
           updatedAt: c.last_used_timestamp ? new Date(c.last_used_timestamp) : new Date(),
         }));
         setSavedConfigs(frontendConfigs);
+        setLoadError(null);
       } catch (err) {
         console.error('Failed to load game state:', err);
+        setLoadError('Could not load the lineup and field from the Dugout service.');
       } finally {
         setLoading(false);
       }
@@ -208,7 +211,7 @@ export function useGameConfig(players?: Player[]) {
       
       // Update lineup: Replace DH with pitcher (if there is one)
       if (dhPlayerId) {
-        const newLineup = lineup.map(slot => {
+        const newLineup: LineupSlot[] = lineup.map(slot => {
           if (slot.playerId === dhPlayerId) {
             // Replace DH with pitcher in this lineup spot
             return { 
@@ -717,6 +720,7 @@ export function useGameConfig(players?: Player[]) {
     clearLineup,
     clearField,
     loading,
+    loadError,
     isDirty,
     syncError
   };

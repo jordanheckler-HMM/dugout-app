@@ -1,5 +1,5 @@
 import { Player } from '@/types/player';
-import { GripVertical, MoreVertical } from 'lucide-react';
+import { Check, GripVertical, MoreVertical, MousePointer2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
 
@@ -10,6 +10,8 @@ interface PlayerCardProps {
   isActive?: boolean;
   onEdit?: () => void;
   onDragStart?: () => void;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
 function formatStat(key: string, value: number): string {
@@ -39,7 +41,7 @@ function getStatLabel(key: string): string {
   return labels[key] || key.toUpperCase();
 }
 
-export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDragStart }: PlayerCardProps) {
+export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDragStart, isSelected, onSelect }: PlayerCardProps) {
   // Fetch real season stats from backend
   const { stats: seasonStats, loading: statsLoading } = usePlayerSeasonStats(player.id);
   
@@ -76,10 +78,11 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
     <div
       className={cn(
         'group relative bg-card rounded-md border px-2.5 py-2 transition-colors duration-150',
-        'cursor-grab active:cursor-grabbing hover:bg-muted/20',
+        'cursor-grab active:cursor-grabbing hover:bg-muted',
         isDragging && 'opacity-90',
         player.status === 'archived' && 'opacity-60',
-        isActive ? 'border-l-4 border-l-primary bg-muted/20' : 'border-border'
+        isActive ? 'border-l-4 border-l-primary' : 'border-border',
+        isSelected && 'ring-2 ring-sidebar-primary'
       )}
       draggable
       onDragStart={onDragStart}
@@ -91,7 +94,7 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
 
       <div className="flex items-start gap-2.5 pl-2">
         {/* Number badge */}
-        {player.number && (
+        {player.number !== undefined && (
           <div className="flex-shrink-0 w-7 h-7 rounded border border-primary/30 bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center justify-center">
             {player.number}
           </div>
@@ -148,6 +151,27 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
           )}
         </div>
 
+        {onSelect && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect();
+            }}
+            aria-label={`${isSelected ? 'Deselect' : 'Select'} ${player.name} for placement`}
+            aria-pressed={isSelected}
+            title={isSelected ? 'Cancel placement' : 'Select for lineup or field'}
+            className={cn(
+              'rounded-md border p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+              isSelected
+                ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
+                : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
+          >
+            {isSelected ? <Check className="h-3.5 w-3.5" /> : <MousePointer2 className="h-3.5 w-3.5" />}
+          </button>
+        )}
+
         {/* Edit button */}
         {onEdit && (
           <button
@@ -157,9 +181,9 @@ export function PlayerCard({ player, compact, isDragging, isActive, onEdit, onDr
               onEdit();
             }}
             aria-label={`Edit ${player.name}`}
-            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 p-0.5 rounded hover:bg-muted transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="rounded p-1.5 text-muted-foreground/75 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
+            <MoreVertical className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

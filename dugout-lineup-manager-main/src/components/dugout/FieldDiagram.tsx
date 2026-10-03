@@ -11,6 +11,7 @@ interface FieldDiagramProps {
   onRemove: (position: Position) => void;
   draggingPlayerId: string | null;
   onDragPlayer: (playerId: string) => void;
+  selectedPlayerId?: string | null;
 }
 
 function getPositionFit(player: Player, currentPosition: Position): PositionFit {
@@ -28,7 +29,7 @@ function getPositionFitStyles(fit: PositionFit): string {
     case 'primary':
       return 'bg-green-500 ring-2 ring-green-400';  // Perfect fit - green
     case 'secondary':
-      return 'bg-yellow-500 ring-2 ring-yellow-400'; // Okay fit - yellow
+      return 'bg-yellow-400 text-slate-950 ring-2 ring-yellow-500'; // Okay fit - yellow
     case 'out-of-position':
       return 'bg-red-500 ring-2 ring-red-400';       // Bad fit - red
   }
@@ -40,7 +41,8 @@ export function FieldDiagram({
   onAssign,
   onRemove,
   draggingPlayerId,
-  onDragPlayer
+  onDragPlayer,
+  selectedPlayerId
 }: FieldDiagramProps) {
   const getPlayer = (id: string | null) =>
     id ? players.find(p => p.id === id) : null;
@@ -156,12 +158,17 @@ export function FieldDiagram({
                       }}
                     >
                     <div className="relative">
-                      <div className={cn(
-                        'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border border-black/20 text-white transition-all',
+                      <button
+                        type="button"
+                        tabIndex={selectedPlayerId && selectedPlayerId !== player.id ? 0 : -1}
+                        onClick={() => { if (selectedPlayerId && selectedPlayerId !== player.id) onAssign(selectedPlayerId, fp.position); }}
+                        aria-label={`${fp.position}: ${player.name}. ${selectedPlayerId && selectedPlayerId !== player.id ? 'Place selected player here' : 'Select another player to replace'}`}
+                        className={cn(
+                        'w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border border-black/20 text-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         getPositionFitStyles(getPositionFit(player, fp.position))
                       )}>
-                        {player.number || player.name.charAt(0)}
-                      </div>
+                        {player.number ?? player.name.charAt(0)}
+                      </button>
 
                       {/* Out of position warning badge */}
                       {getPositionFit(player, fp.position) === 'out-of-position' && (
@@ -184,16 +191,20 @@ export function FieldDiagram({
                     </span>
                   </div>
                 ) : (
-                  <div
+                  <button
+                    type="button"
+                    tabIndex={selectedPlayerId ? 0 : -1}
+                    onClick={() => { if (selectedPlayerId) onAssign(selectedPlayerId, fp.position); }}
+                    aria-label={`${fp.position}: empty. ${selectedPlayerId ? 'Place selected player here' : 'Select a player to place here'}`}
                     className={cn(
-                      'w-8 h-8 rounded-full border border-dashed flex items-center justify-center text-[10px] font-semibold transition-colors',
+                      'w-8 h-8 rounded-full border border-dashed flex items-center justify-center text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                       draggingPlayerId
                         ? 'border-primary bg-primary/20 text-primary'
                         : 'border-primary/40 bg-card/80 text-muted-foreground'
                     )}
                   >
                     {fp.position}
-                  </div>
+                  </button>
                 )}
               </div>
             </div>

@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { useEcosystemInit } from "@/hooks/useEcosystemInit";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import Index from "./pages/Index";
@@ -18,9 +17,6 @@ const queryClient = new QueryClient();
  * Inner app component that uses hooks
  */
 const AppContent = () => {
-  // Initialize ecosystem directory on startup
-  useEcosystemInit();
-
   // Check for app updates
   const { status: updateStatus, installUpdate, dismissUpdate, checkForUpdate } = useAppUpdater();
 

@@ -15,13 +15,16 @@ if [ -z "${TARGET_TRIPLE}" ]; then
     echo "Install Rust and ensure 'rustc -vV' works."
     exit 1
 fi
-PYI_CACHE_DIR="$BACKEND_DIR/.pyinstaller-cache"
-
-mkdir -p "$PYI_CACHE_DIR"
+BINARY_EXTENSION=""
+if [[ "$TARGET_TRIPLE" == *windows* ]]; then
+    BINARY_EXTENSION=".exe"
+fi
 
 echo "Building backend from $BACKEND_DIR..."
 
 cd "$BACKEND_DIR"
+BUILD_DIR="$(mktemp -d .sidecar-build.XXXXXX)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
 
 # Install dependencies if needed (optional, assuming env is ready)
 # pip install -r requirements.txt
@@ -30,13 +33,11 @@ cd "$BACKEND_DIR"
 # --onefile: Create a single executable
 # --name: Name of the executable
 # --clean: Clean PyInstaller cache
-PYINSTALLER_CONFIG_DIR="$PYI_CACHE_DIR" pyinstaller --clean --noconfirm --onefile --name backend-sidecar main.py
+pyinstaller --clean --noconfirm --onefile --name backend-sidecar \
+    --workpath "$BUILD_DIR/work" --distpath "$BUILD_DIR/dist" --specpath "$BUILD_DIR" main.py
 
 # Move to Tauri binaries folder with target triple
-echo "Moving binary to $TARGET_DIR/backend-sidecar-$TARGET_TRIPLE"
-mv dist/backend-sidecar "$TARGET_DIR/backend-sidecar-$TARGET_TRIPLE"
-
-# Cleanup
-rm -rf build dist backend-sidecar.spec
+echo "Moving binary to $TARGET_DIR/backend-sidecar-$TARGET_TRIPLE$BINARY_EXTENSION"
+mv "$BUILD_DIR/dist/backend-sidecar$BINARY_EXTENSION" "$TARGET_DIR/backend-sidecar-$TARGET_TRIPLE$BINARY_EXTENSION"
 
 echo "Build complete."

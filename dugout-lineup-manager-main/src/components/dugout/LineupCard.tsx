@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LineupSlot, Player, Position, FieldPosition } from '@/types/player';
 import { cn } from '@/lib/utils';
-import { User, X } from 'lucide-react';
+import { Plus, User, X } from 'lucide-react';
 import { usePlayerSeasonStats } from '@/hooks/usePlayerSeasonStats';
 
 interface LineupCardProps {
@@ -16,6 +16,7 @@ interface LineupCardProps {
   onAddToBench: (playerId: string) => void;
   draggingPlayerId: string | null;
   onDragPlayer: (playerId: string) => void;
+  selectedPlayerId?: string | null;
 }
 
 // Helper component to display player stats in lineup
@@ -69,7 +70,8 @@ export function LineupCard({
   onReorder,
   onAddToBench,
   draggingPlayerId,
-  onDragPlayer
+  onDragPlayer,
+  selectedPlayerId
 }: LineupCardProps) {
   const [dragOverOrder, setDragOverOrder] = useState<number | null>(null);
   const [isBenchDragOver, setIsBenchDragOver] = useState(false);
@@ -154,8 +156,8 @@ export function LineupCard({
       {/* Header */}
       <div className="px-3 py-2 bg-muted/40 border-b border-border">
         <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-foreground/80">Batting Order</h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">
-          {useDH ? 'Designated Hitter active' : 'Pitcher bats'}
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {useDH ? 'Designated hitter active' : 'Pitcher bats'} · Drag a player here or select one from the roster
         </p>
       </div>
 
@@ -197,7 +199,7 @@ export function LineupCard({
                   >
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <div className="flex items-center gap-1.5">
-                        {player.number && (
+                        {player.number !== undefined && (
                           <span className="text-[10px] font-medium text-muted-foreground">
                             #{player.number}
                           </span>
@@ -223,19 +225,30 @@ export function LineupCard({
                     <PlayerStatsDisplay playerId={player.id} />
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground/50 italic">
-                    {isPitcherSlot ? 'Pitcher' : 'Drag player here'}
+                  <span className="text-xs text-muted-foreground">
+                    {isPitcherSlot ? 'Pitcher' : 'Open spot'}
                   </span>
                 )}
               </div>
 
               {/* Actions */}
+              {selectedPlayerId && selectedPlayerId !== player?.id && (
+                <button
+                  type="button"
+                  onClick={() => onAssign(selectedPlayerId, slot.order, null)}
+                  aria-label={`${player ? `Replace ${player.name}` : 'Place selected player'} in batting spot ${slot.order}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/5 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  Place
+                </button>
+              )}
               {player && (
                 <button
                   type="button"
                   onClick={() => onRemove(slot.order)}
                   aria-label={`Remove ${player.name} from lineup`}
-                  className="p-0.5 rounded hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="rounded p-1.5 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>

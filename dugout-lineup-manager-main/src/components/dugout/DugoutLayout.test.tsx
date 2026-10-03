@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/usePlayers", () => ({
@@ -38,12 +38,6 @@ vi.mock("@/hooks/useGameConfig", () => ({
   }),
 }));
 
-vi.mock("@/store/aiStore", () => ({
-  useAIStore: () => ({
-    uiTheme: "solid",
-  }),
-}));
-
 vi.mock("@/components/ui/resizable", () => ({
   ResizablePanelGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ResizablePanel: React.forwardRef(({ children }: { children: React.ReactNode }, ref) => {
@@ -68,10 +62,6 @@ vi.mock("./PlayerRankingsPanel", () => ({
   PlayerRankingsPanel: () => <div data-testid="rankings-panel">Rankings Panel</div>,
 }));
 
-vi.mock("./LyraPanel", () => ({
-  LyraPanel: () => <div data-testid="lyra-panel">Lyra Panel</div>,
-}));
-
 import { DugoutLayout } from "./DugoutLayout";
 
 afterEach(() => {
@@ -79,23 +69,12 @@ afterEach(() => {
 });
 
 describe("DugoutLayout", () => {
-  it("exposes panel toggle controls with explicit button semantics", () => {
+  it("keeps season rankings available without an AI coach panel", () => {
     render(<DugoutLayout />);
 
     expect(screen.getByRole("button", { name: "Collapse players panel" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Collapse right panel" })).toBeTruthy();
-
-    const rankingsButton = screen.getByRole("button", { name: "Rankings" });
-    const aiCoachButton = screen.getByRole("button", { name: "AI Coach" });
-
-    expect(rankingsButton.getAttribute("type")).toBe("button");
-    expect(aiCoachButton.getAttribute("type")).toBe("button");
-    expect(rankingsButton.getAttribute("aria-pressed")).toBe("true");
-    expect(aiCoachButton.getAttribute("aria-pressed")).toBe("false");
-
-    fireEvent.click(aiCoachButton);
-
-    expect(rankingsButton.getAttribute("aria-pressed")).toBe("false");
-    expect(aiCoachButton.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("rankings-panel")).toBeTruthy();
+    expect(screen.queryByTestId("lyra-panel")).toBeNull();
   });
 });
