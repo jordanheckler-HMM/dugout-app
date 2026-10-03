@@ -38,22 +38,51 @@ def release_download_url(url: str, tag: str) -> str:
 
 
 def classify_signature(name: str) -> tuple[str, str] | None:
-    """Map an uploaded .sig asset name to (platform, installer)."""
+    """Map an uploaded .sig asset name to (platform, installer).
+
+    Tauri 2.9 uploads the updater signature beside the installer itself
+    (``Dugout_0.1.6_amd64.AppImage.sig``, ``*.msi.sig``, ``*-setup.exe.sig``).
+    Older layouts used a zipped updater archive (``*.AppImage.tar.gz.sig``,
+    ``*.msi.zip.sig``, ``*.nsis.zip.sig``). Longer suffixes are checked first
+    so a zipped name is not classified as the shorter installer suffix.
+    """
     if name.endswith(".app.tar.gz.sig"):
         if "aarch64" in name:
             return "darwin-aarch64", "app"
         if "x64" in name or "x86_64" in name:
             return "darwin-x86_64", "app"
         return None
-    if name.endswith(".AppImage.tar.gz.sig"):
+    if name.endswith(".AppImage.tar.gz.sig") or name.endswith(".AppImage.sig"):
         return "linux-x86_64", "appimage"
     if name.endswith(".deb.sig"):
         return "linux-x86_64", "deb"
-    if name.endswith(".msi.zip.sig"):
+    if name.endswith(".msi.zip.sig") or name.endswith(".msi.sig"):
         return "windows-x86_64", "msi"
-    if name.endswith(".nsis.zip.sig"):
+    if name.endswith(".nsis.zip.sig") or name.endswith(".exe.sig"):
         return "windows-x86_64", "nsis"
     return None
+
+
+def legacy_platform_keys(classified: list[tuple[str, str]]) -> set[str]:
+    """Return the platform keys a set of (platform, installer) pairs would fill.
+
+    Mirrors ``build_platforms`` without talking to GitHub: the legacy
+    ``linux-x86_64`` entry follows the AppImage, and ``windows-x86_64``
+    prefers the MSI.
+    """
+    keys: set[str] = set()
+    windows: set[str] = set()
+    for platform, installer in classified:
+        keys.add(f"{platform}-{installer}")
+        if platform == "windows-x86_64":
+            windows.add(installer)
+        elif installer != "deb":
+            keys.add(platform)
+    for installer in WINDOWS_PRIMARY_PREFERENCE:
+        if installer in windows:
+            keys.add("windows-x86_64")
+            break
+    return keys
 
 
 def self_test() -> int:
@@ -61,9 +90,12 @@ def self_test() -> int:
         "Dugout_aarch64.app.tar.gz.sig": ("darwin-aarch64", "app"),
         "Dugout_x64.app.tar.gz.sig": ("darwin-x86_64", "app"),
         "Dugout_0.1.6_amd64.AppImage.tar.gz.sig": ("linux-x86_64", "appimage"),
+        "Dugout_0.1.6_amd64.AppImage.sig": ("linux-x86_64", "appimage"),
         "Dugout_0.1.6_amd64.deb.sig": ("linux-x86_64", "deb"),
         "Dugout_0.1.6_x64_en-US.msi.zip.sig": ("windows-x86_64", "msi"),
+        "Dugout_0.1.6_x64_en-US.msi.sig": ("windows-x86_64", "msi"),
         "Dugout_0.1.6_x64-setup.nsis.zip.sig": ("windows-x86_64", "nsis"),
+        "Dugout_0.1.6_x64-setup.exe.sig": ("windows-x86_64", "nsis"),
     }
     for name, expected in cases.items():
         got = classify_signature(name)
@@ -79,6 +111,28 @@ def self_test() -> int:
     )
     if rewritten != "https://github.com/example/app/releases/download/v0.1.6-rc.1/Dugout.dmg":
         print(rewritten, file=sys.stderr)
+        return 1
+
+    # Names uploaded by the v0.1.6-rc.4 matrix (unzipped updater signatures).
+    rc4_names = [
+        "Dugout_aarch64.app.tar.gz.sig",
+        "Dugout_x64.app.tar.gz.sig",
+        "Dugout_0.1.6_amd64.AppImage.sig",
+        "Dugout_0.1.6_amd64.deb.sig",
+        "Dugout_0.1.6_x64_en-US.msi.sig",
+        "Dugout_0.1.6_x64-setup.exe.sig",
+    ]
+    classified: list[tuple[str, str]] = []
+    for name in rc4_names:
+        item = classify_signature(name)
+        if item is None:
+            print(f"rc.4 signature did not classify: {name}", file=sys.stderr)
+            return 1
+        classified.append(item)
+    keys = legacy_platform_keys(classified)
+    missing = [name for name in REQUIRED_PLATFORMS if name not in keys]
+    if missing:
+        print(f"rc.4 layout missing platforms: {missing}", file=sys.stderr)
         return 1
     print("self-test ok")
     return 0
