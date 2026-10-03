@@ -126,9 +126,13 @@ class JSONStorage:
     # --- Player operations ---
     
     def get_players(self) -> List[Player]:
-        """Get all players."""
+        """Get all players, migrating single primaries into position arrays."""
         data = self.load("players.json")
-        return [Player(**p) for p in data]
+        players = [Player(**p) for p in data]
+        needs_migration = any(not p.get("primary_positions") for p in data)
+        if needs_migration and players:
+            self.save_players(players)
+        return players
     
     def save_players(self, players: List[Player]):
         """Save all players."""
@@ -167,6 +171,10 @@ class JSONStorage:
                 # Merge updates into existing player data
                 player_dict = player.model_dump()
                 player_dict.update(updated_data)
+                if updated_data.get("primary_positions"):
+                    player_dict["primary_position"] = updated_data["primary_positions"][0]
+                elif updated_data.get("primary_position") and "primary_positions" not in updated_data:
+                    player_dict["primary_positions"] = [updated_data["primary_position"]]
                 updated_player = Player(**player_dict)
                 players[i] = updated_player
                 self.save_players(players)

@@ -2,6 +2,10 @@
 
 Automated release for Dugout.
 
+This build is a local clubhouse: squad cards, a depth chart, a shared
+lineup and diamond, DH and no-DH modes, and a chemistry meter scored
+from the positions you enter. There is no cloud sync.
+
 ## Downloads
 
 - macOS Apple Silicon: `.dmg`

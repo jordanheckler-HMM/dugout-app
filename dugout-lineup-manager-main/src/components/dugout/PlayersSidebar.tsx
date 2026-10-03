@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import { Player, PlayerStatus, LineupSlot, FieldPosition } from '@/types/player';
 import { PlayerCard } from './PlayerCard';
 import { PlayerEditDrawer } from './PlayerEditDrawer';
@@ -14,7 +15,38 @@ interface PlayersSidebarProps {
   onAddPlayer: (player: Omit<Player, 'id'>) => Promise<unknown>;
   onUpdatePlayer: (id: string, updates: Partial<Player>) => Promise<void>;
   onRemovePlayer: (id: string) => Promise<void>;
-  onDragPlayer: (playerId: string) => void;
+  onDragPlayer?: (playerId: string) => void;
+  onSelect?: (playerId: string) => void;
+}
+
+function DraggablePlayer({
+  player,
+  isActive,
+  onEdit,
+  onSelect,
+}: {
+  player: Player;
+  isActive: boolean;
+  onEdit: () => void;
+  onSelect?: (playerId: string) => void;
+}) {
+  const drag = useDraggable({
+    id: `player:${player.id}`,
+    data: { type: 'player', playerId: player.id },
+  });
+  const { role: _role, ...dragAttributes } = drag.attributes;
+  return (
+    <div
+      ref={drag.setNodeRef}
+      data-player-id={player.id}
+      className={cn(drag.isDragging && 'opacity-50')}
+      {...dragAttributes}
+      {...drag.listeners}
+      onClick={() => onSelect?.(player.id)}
+    >
+      <PlayerCard player={player} isActive={isActive} onEdit={onEdit} />
+    </div>
+  );
 }
 
 type StatusFilter = 'all' | PlayerStatus;
@@ -26,7 +58,7 @@ export function PlayersSidebar({
   onAddPlayer,
   onUpdatePlayer,
   onRemovePlayer,
-  onDragPlayer
+  onSelect,
 }: PlayersSidebarProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -102,14 +134,14 @@ export function PlayersSidebar({
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-sidebar-border">
+      <div className="px-3 py-2 pr-10 border-b border-sidebar-border">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold tracking-tight">Players</h2>
           <button
             type="button"
             onClick={() => setIsAddingPlayer(true)}
             aria-label="Add player"
-            className="mr-8 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1"
           >
             <Plus className="w-3.5 h-3.5" />
             Add
@@ -165,26 +197,15 @@ export function PlayersSidebar({
 
                   {/* Players in this group */}
                   <div className="space-y-2">
-                    {groupPlayers.map(player => {
-                      const isActive = isPlayerActive(player.id);
-                      return (
-                        <div
-                          key={player.id}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = 'move';
-                            e.dataTransfer.setData('text/plain', player.id);
-                            onDragPlayer(player.id);
-                          }}
-                        >
-                          <PlayerCard
-                            player={player}
-                            isActive={isActive}
-                            onEdit={() => setEditingPlayer(player)}
-                          />
-                        </div>
-                      );
-                    })}
+                    {groupPlayers.map(player => (
+                      <DraggablePlayer
+                        key={player.id}
+                        player={player}
+                        isActive={isPlayerActive(player.id)}
+                        onEdit={() => setEditingPlayer(player)}
+                        onSelect={onSelect}
+                      />
+                    ))}
                   </div>
                 </div>
               );

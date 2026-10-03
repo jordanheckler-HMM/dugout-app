@@ -530,7 +530,7 @@ const Games = () => {
         <title>Games - Dugout</title>
       </Helmet>
 
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-full overflow-auto flex flex-col bg-background">
         <div className="border-b border-border px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div>
@@ -543,9 +543,9 @@ const Games = () => {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/lineup')}
               >
-                Back to Lineup
+                Lineup
               </Button>
 
               <Dialog open={isAddDialogOpen} onOpenChange={handleDialogOpenChange}>

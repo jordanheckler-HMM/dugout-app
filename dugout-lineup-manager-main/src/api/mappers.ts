@@ -8,6 +8,7 @@
  */
 
 import { Player, LineupSlot, FieldPosition, Position } from '@/types/player';
+import { primaryPositionsOf, secondaryPositionsOf } from '@/lib/positions';
 import {
   BackendPlayer,
   BackendLineupSlot,
@@ -24,20 +25,30 @@ export function mapBackendPlayerToFrontend(
   backendPlayer: BackendPlayer,
   existingPlayer?: Player
 ): Player {
-  const primaryPosition = backendPlayer.primary_position as Position;
-  const secondaryPositions = (backendPlayer.secondary_positions || []).map(p => p as Position);
+  const primaryPositions = (
+    backendPlayer.primary_positions?.length
+      ? backendPlayer.primary_positions
+      : [backendPlayer.primary_position]
+  ).filter(Boolean) as Position[];
+  const primaryPosition = primaryPositions[0];
+  const secondaryPositions = secondaryPositionsOf({
+    primaryPosition,
+    primaryPositions,
+    secondaryPositions: (backendPlayer.secondary_positions || []) as Position[],
+  });
   
   return {
     id: backendPlayer.id,
     name: backendPlayer.name,
     number: backendPlayer.number,
-    primaryPosition: primaryPosition,
-    secondaryPositions: secondaryPositions,
-    positions: [primaryPosition, ...secondaryPositions], // Combined for backward compatibility
+    primaryPosition,
+    primaryPositions,
+    secondaryPositions,
+    positions: [...primaryPositions, ...secondaryPositions],
     bats: backendPlayer.bats as 'L' | 'R' | 'S',
     throws: backendPlayer.throws as 'L' | 'R',
-    // Use backend status if available, otherwise preserve existing or default to 'active'
     status: (backendPlayer.status as 'active' | 'inactive' | 'archived') || existingPlayer?.status || 'active',
+    notes: backendPlayer.notes ?? existingPlayer?.notes ?? '',
     stats: existingPlayer?.stats || {},
   };
 }
@@ -48,14 +59,16 @@ export function mapBackendPlayerToFrontend(
 export function mapFrontendPlayerToBackend(
   player: Omit<Player, 'id'> | Player
 ): Omit<BackendPlayer, 'id'> {
+  const primaryPositions = primaryPositionsOf(player);
   const result: Omit<BackendPlayer, 'id'> = {
     name: player.name,
-    primary_position: player.primaryPosition,
-    secondary_positions: player.secondaryPositions || [],
+    primary_position: primaryPositions[0] ?? player.primaryPosition,
+    primary_positions: primaryPositions,
+    secondary_positions: secondaryPositionsOf(player),
     bats: player.bats,
     throws: player.throws,
     status: player.status,
-    notes: '', // Backend has notes, frontend doesn't currently use them in Player type
+    notes: player.notes ?? '',
   };
   
   // Only include number if it's defined (don't send 0 or undefined)

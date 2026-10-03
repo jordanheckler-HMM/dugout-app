@@ -16,6 +16,7 @@ export interface BackendPlayer {
   name: string;
   number?: number;
   primary_position: string;
+  primary_positions?: string[];
   secondary_positions?: string[];
   bats: string;
   throws: string;
@@ -41,25 +42,6 @@ export interface BackendConfiguration {
   use_dh?: boolean;
   notes?: string;
   last_used_timestamp?: string;
-}
-
-export interface LyraAnalysisRequest {
-  lineup: BackendLineupSlot[];
-  field_positions: BackendFieldPosition[];
-  players: BackendPlayer[];
-  question?: string;
-}
-
-export interface LyraAnalysisResponse {
-  analysis: string;
-  timestamp: string;
-}
-
-export interface OllamaModelsResponse {
-  ollama_url: string;
-  connected: boolean;
-  models: string[];
-  error?: string;
 }
 
 export interface BackendGame {
@@ -140,59 +122,6 @@ export interface BackendSeasonStats {
     a?: number;
     e?: number;
     fpct?: number;
-  };
-}
-
-// AI Settings types
-import { AIConfig, ChatMessage } from '@/types/ai';
-
-interface BackendAIConfig {
-  provider: 'ollama' | 'openai' | 'anthropic';
-  ollama_url: string;
-  preferred_model: string;
-  openai_key?: string | null;
-  anthropic_key?: string | null;
-}
-
-interface BackendAIConfigResponse {
-  provider: 'ollama' | 'openai' | 'anthropic';
-  ollama_url: string;
-  preferred_model: string;
-  openai_key_set?: boolean;
-  anthropic_key_set?: boolean;
-}
-
-function mapFrontendAIConfigToBackend(config: AIConfig): BackendAIConfig {
-  const resolvedProvider = config.mode === 'local'
-    ? 'ollama'
-    : config.cloudProvider;
-
-  return {
-    provider: resolvedProvider,
-    ollama_url: config.ollamaUrl,
-    preferred_model: config.preferredModel,
-    openai_key: config.openaiKey || undefined,
-    anthropic_key: config.anthropicKey || undefined,
-  };
-}
-
-function mapBackendAIConfigToFrontend(
-  config: BackendAIConfigResponse,
-  previousConfig?: AIConfig
-): AIConfig {
-  const mode = config.provider === 'ollama' ? 'local' : 'cloud';
-  const cloudProvider = config.provider === 'anthropic'
-    ? 'anthropic'
-    : 'openai';
-
-  return {
-    mode,
-    provider: mode === 'local' ? 'ollama' : cloudProvider,
-    cloudProvider,
-    ollamaUrl: config.ollama_url,
-    preferredModel: config.preferred_model,
-    openaiKey: previousConfig?.openaiKey ?? '',
-    anthropicKey: previousConfig?.anthropicKey ?? '',
   };
 }
 
@@ -370,100 +299,6 @@ export const configurationApi = {
     return fetchApi<void>(`/configurations/${id}`, {
       method: 'DELETE',
     });
-  },
-};
-
-// ==================== Lyra API ====================
-
-export const lyraApi = {
-  /**
-   * Get coaching perspective from Lyra
-   * Returns advisory text only - does not modify lineup/field
-   */
-  async analyze(
-    request: LyraAnalysisRequest
-  ): Promise<LyraAnalysisResponse> {
-    return fetchApi<LyraAnalysisResponse>('/lyra/analyze', {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
-  },
-
-  /**
-   * Stream chat with AI provider
-   */
-  async streamChat(
-    messages: ChatMessage[],
-    model: string,
-    onChunk: (chunk: string) => void,
-    onDone?: () => void,
-    onError?: (err: unknown) => void,
-    signal?: AbortSignal
-  ): Promise<void> {
-    try {
-      const response = await fetch(`${API_BASE}/lyra/chat/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messages, model }),
-        signal,
-      });
-
-      if (!response.ok) throw new Error('Network response was not ok');
-      if (!response.body) throw new Error('Response body is null');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        // Parse SSE format if needed, or if backend sends raw text chunks
-        // Backend sends "text/event-stream" but implementation uses yield plain text in chunks?
-        // Wait, StreamingResponse in FastAPI usually sends chunks as is if media_type is generic, 
-        // but text/event-stream implies "data: ..." format.
-        // My backend implementation yielded raw text or json? 
-        // Let's check backend ai_service.py: yield chunk. 
-        // FastAPI StreamingResponse just yields what you give it. 
-        // If I put media_type="text/event-stream", browser might expect SSE format (data: ...\n\n).
-        // My backend yielded raw content chunks. 
-        // So I'll treat it as raw stream for now.
-        onChunk(chunk);
-      }
-      if (onDone) onDone();
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        if (onDone) onDone();
-        return;
-      }
-      if (onError) onError(err);
-    }
-  },
-};
-
-// ==================== Settings API ====================
-
-export const settingsApi = {
-  async getAISettings(previousConfig?: AIConfig): Promise<AIConfig> {
-    const backendConfig = await fetchApi<BackendAIConfigResponse>('/settings/ai');
-    return mapBackendAIConfigToFrontend(backendConfig, previousConfig);
-  },
-
-  async updateAISettings(config: AIConfig): Promise<AIConfig> {
-    const backendConfig = await fetchApi<BackendAIConfigResponse>('/settings/ai', {
-      method: 'PUT',
-      body: JSON.stringify(mapFrontendAIConfigToBackend(config)),
-    });
-    return mapBackendAIConfigToFrontend(backendConfig, config);
-  },
-
-  async getOllamaModels(ollamaUrl?: string): Promise<OllamaModelsResponse> {
-    const query = ollamaUrl
-      ? `?ollama_url=${encodeURIComponent(ollamaUrl)}`
-      : '';
-    return fetchApi<OllamaModelsResponse>(`/settings/ai/ollama-models${query}`);
   },
 };
 

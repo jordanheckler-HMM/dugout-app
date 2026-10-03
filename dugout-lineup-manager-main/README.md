@@ -93,8 +93,7 @@ first, then run your Tauri build flow.
 
 ## Runtime Side Effects
 
-- On app startup, `useEcosystemInit` initializes a shared directory at
-  `~/.hymetalab/` (config/models/data/logs structure).
+- Player, lineup, and game data stay in the local sidecar data directory.
 - In Tauri desktop runtime, the app attempts to launch a backend sidecar and
   sets `DUGOUT_DATA_DIR` for that sidecar process.
 

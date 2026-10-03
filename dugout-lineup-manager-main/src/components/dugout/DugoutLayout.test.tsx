@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/usePlayers", () => ({
@@ -38,38 +38,16 @@ vi.mock("@/hooks/useGameConfig", () => ({
   }),
 }));
 
-vi.mock("@/store/aiStore", () => ({
-  useAIStore: () => ({
-    uiTheme: "solid",
-  }),
+vi.mock("@/hooks/usePlayerSeasonStats", () => ({
+  usePlayerSeasonStats: () => ({ stats: null, loading: false, error: null }),
 }));
 
-vi.mock("@/components/ui/resizable", () => ({
-  ResizablePanelGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ResizablePanel: React.forwardRef(({ children }: { children: React.ReactNode }, ref) => {
-    React.useImperativeHandle(ref, () => ({
-      collapse: vi.fn(),
-      expand: vi.fn(),
-    }));
-    return <div>{children}</div>;
-  }),
-  ResizableHandle: () => <div data-testid="resizable-handle" />,
+vi.mock("@/api/client", () => ({
+  gamesApi: { getAll: vi.fn().mockResolvedValue([]) },
 }));
 
 vi.mock("./PlayersSidebar", () => ({
   PlayersSidebar: () => <div data-testid="players-sidebar">Players Sidebar</div>,
-}));
-
-vi.mock("./GameCanvas", () => ({
-  GameCanvas: () => <div data-testid="game-canvas">Game Canvas</div>,
-}));
-
-vi.mock("./PlayerRankingsPanel", () => ({
-  PlayerRankingsPanel: () => <div data-testid="rankings-panel">Rankings Panel</div>,
-}));
-
-vi.mock("./LyraPanel", () => ({
-  LyraPanel: () => <div data-testid="lyra-panel">Lyra Panel</div>,
 }));
 
 import { DugoutLayout } from "./DugoutLayout";
@@ -79,23 +57,17 @@ afterEach(() => {
 });
 
 describe("DugoutLayout", () => {
-  it("exposes panel toggle controls with explicit button semantics", () => {
-    render(<DugoutLayout />);
+  it("exposes collapse controls and does not offer an AI coach", () => {
+    render(
+      <MemoryRouter initialEntries={["/lineup"]}>
+        <DugoutLayout />
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByRole("button", { name: "Collapse players panel" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Collapse right panel" })).toBeTruthy();
-
-    const rankingsButton = screen.getByRole("button", { name: "Rankings" });
-    const aiCoachButton = screen.getByRole("button", { name: "AI Coach" });
-
-    expect(rankingsButton.getAttribute("type")).toBe("button");
-    expect(aiCoachButton.getAttribute("type")).toBe("button");
-    expect(rankingsButton.getAttribute("aria-pressed")).toBe("true");
-    expect(aiCoachButton.getAttribute("aria-pressed")).toBe("false");
-
-    fireEvent.click(aiCoachButton);
-
-    expect(rankingsButton.getAttribute("aria-pressed")).toBe("false");
-    expect(aiCoachButton.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Collapse players panel" }).getAttribute("type")).toBe("button");
+    expect(screen.getByRole("button", { name: "Collapse board panel" }).getAttribute("type")).toBe("button");
+    expect(screen.queryByRole("button", { name: "AI Coach" })).toBeNull();
+    expect(screen.queryByText(/lyra|ollama/i)).toBeNull();
+    expect(screen.getByTestId("players-sidebar")).toBeTruthy();
   });
 });
