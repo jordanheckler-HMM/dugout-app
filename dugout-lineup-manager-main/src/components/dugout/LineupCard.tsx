@@ -1,20 +1,42 @@
+import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { LineupSlot, FieldPosition, Player } from "@/types/player";
+import { LineupSlot, FieldPosition, Player, Position } from "@/types/player";
 import { cn } from "@/lib/utils";
 import { fitAtPosition } from "@/lib/chemistry";
 import { X } from "lucide-react";
 import { usePlayerSeasonStats } from "@/hooks/usePlayerSeasonStats";
-import { heroStat, showStatsFor } from "@/lib/showStats";
 
 interface LineupCardProps {
   lineup: LineupSlot[];
   players: Player[];
   fieldPositions: FieldPosition[];
   useDH: boolean;
-  selectedId?: string | null;
   onRemove: (order: number) => void;
   onSelect: (playerId: string) => void;
+}
+
+function PlayerStatsDisplay({ playerId }: { playerId: string }) {
+  const { stats, loading } = usePlayerSeasonStats(playerId);
+  if (loading || !stats) return <span className="text-[11px] text-muted-foreground">No stats yet</span>;
+  if (stats.hitting.ab && stats.hitting.ab > 0) {
+    return (
+      <span className="text-[11px] text-muted-foreground">
+        {stats.hitting.avg !== undefined ? `AVG ${stats.hitting.avg.toFixed(3).replace(/^0/, "")}` : "Hitting"}
+        {stats.hitting.hr !== undefined ? ` · HR ${stats.hitting.hr}` : ""}
+        {stats.hitting.rbi !== undefined ? ` · RBI ${stats.hitting.rbi}` : ""}
+      </span>
+    );
+  }
+  if (stats.pitching.ip && stats.pitching.ip > 0) {
+    return (
+      <span className="text-[11px] text-muted-foreground">
+        {stats.pitching.era !== undefined ? `ERA ${stats.pitching.era.toFixed(2)}` : "Pitching"}
+        {stats.pitching.k !== undefined ? ` · K ${stats.pitching.k}` : ""}
+      </span>
+    );
+  }
+  return <span className="text-[11px] text-muted-foreground">No stats yet</span>;
 }
 
 function fitClass(fit: string) {
@@ -25,25 +47,16 @@ function fitClass(fit: string) {
   return "fit-empty";
 }
 
-function StatCell({ player }: { player: Player }) {
-  const { stats } = usePlayerSeasonStats(player.id);
-  const hero = heroStat(showStatsFor(player, stats));
-  if (!hero) return <span>—</span>;
-  return <span>{hero.value === "—" ? "—" : `${hero.label} ${hero.value}`}</span>;
-}
-
 function LineupRow({
   slot,
   player,
   useDH,
-  selected,
   onRemove,
   onSelect,
 }: {
   slot: LineupSlot;
   player: Player | null;
   useDH: boolean;
-  selected: boolean;
   onRemove: (order: number) => void;
   onSelect: (playerId: string) => void;
 }) {
@@ -58,29 +71,29 @@ function LineupRow({
     <div
       ref={sortable.setNodeRef}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={cn("lineup-slot", sortable.isOver && "drag-over", !player && "lineup-slot-empty")}
+      className={cn("lineup-slot flex items-center gap-2 py-2 pl-3", player ? "pr-8" : "pr-3", sortable.isOver && "drag-over", !player && "lineup-slot-empty")}
       data-drop-id={`lineup:${slot.order}`}
+      {...sortable.attributes}
     >
+      <div className="order-badge">{slot.order}</div>
       <button
         type="button"
-        className={cn("show-row", selected && "is-selected", !player && "show-row-empty")}
-        {...sortable.attributes}
+        className="flex-1 min-w-0 text-left"
         {...sortable.listeners}
         onClick={() => player && onSelect(player.id)}
       >
         {player ? (
-          <>
-            <span className="show-player">
-              <span className="show-order">{slot.order}.</span>
-              <span className="show-name">{player.name}</span>
-              {slot.position && <span className={cn("fit-badge show-role", fitClass(fit))}>{slot.position}</span>}
+          <span className="flex flex-col min-w-0">
+            <span className="flex items-center gap-2 min-w-0">
+              {player.number !== undefined && <span className="shrink-0 text-[11px] text-muted-foreground">#{player.number}</span>}
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{player.name}</span>
+              {slot.position && <span className={cn("fit-badge shrink-0", fitClass(fit))}>{slot.position}</span>}
+              <span className="min-w-0 truncate text-[11px] text-muted-foreground">B {player.bats} / T {player.throws}</span>
             </span>
-            <span>{slot.position ?? "—"}</span>
-            <span>{player.bats}</span>
-            <StatCell player={player} />
-          </>
+            <PlayerStatsDisplay playerId={player.id} />
+          </span>
         ) : (
-          <span className="show-empty-msg">
+          <span className="text-[13px] text-muted-foreground">
             {isPitcherSlot ? "Pitcher bats here" : "Drop a player into this spot"}
           </span>
         )}
@@ -99,41 +112,29 @@ function LineupRow({
   );
 }
 
-export function LineupCard({
-  lineup,
-  players,
-  fieldPositions,
-  useDH,
-  selectedId = null,
-  onRemove,
-  onSelect,
-}: LineupCardProps) {
+export function LineupCard({ lineup, players, fieldPositions, useDH, onRemove, onSelect }: LineupCardProps) {
+  const bench = useDroppable({ id: "bench", data: { type: "bench" } });
   const pitcher = useDH ? fieldPositions.find((spot) => spot.position === "P") : undefined;
   const pitcherPlayer = pitcher?.playerId ? players.find((player) => player.id === pitcher.playerId) : undefined;
 
   return (
-    <section className="show-panel flex flex-col min-h-0 h-full">
-      <header className="show-panel-head">
-        <h2 className="show-section-title">Batting order</h2>
-        <p className="show-section-note">
-          {useDH ? "Nine batters. The pitcher does not hit." : "Nine batters, including the pitcher."}
-        </p>
+    <section className="surface-card flex flex-col min-h-0 h-full">
+      <header className="px-3 py-2.5 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-[14px] font-semibold">Batting order</h2>
+          <p className="text-[12px] text-muted-foreground">
+            {useDH ? "Nine batters. The pitcher does not hit." : "Nine batters, including the pitcher."}
+          </p>
+        </div>
       </header>
-      <div className="show-cols" aria-hidden="true">
-        <span>Player</span>
-        <span>Pos</span>
-        <span>Bats</span>
-        <span>Stat</span>
-      </div>
       <SortableContext items={lineup.map((slot) => `lineup:${slot.order}`)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 overflow-auto show-rows">
+        <div className="flex-1 overflow-auto">
           {lineup.map((slot) => (
             <LineupRow
               key={slot.order}
               slot={slot}
               player={slot.playerId ? players.find((player) => player.id === slot.playerId) ?? null : null}
               useDH={useDH}
-              selected={Boolean(slot.playerId && slot.playerId === selectedId)}
               onRemove={onRemove}
               onSelect={onSelect}
             />
@@ -141,11 +142,19 @@ export function LineupCard({
         </div>
       </SortableContext>
       {useDH && (
-        <div className="px-3 py-2 border-t border-[hsl(45_35%_40%/0.35)] text-[12px]">
+        <div className="px-3 py-2 border-t border-border text-[12px]">
           <span className="section-label">On the mound</span>
           <p className="mt-1">{pitcherPlayer ? `${pitcherPlayer.name} is pitching and does not bat.` : "No pitcher assigned."}</p>
         </div>
       )}
+      <div
+        ref={bench.setNodeRef}
+        data-drop-id="bench"
+        className={cn("border-t border-border px-3 py-2", bench.isOver && "bg-accent/40")}
+      >
+        <p className="section-label">Bench</p>
+        <p className="text-[12px] text-muted-foreground mt-1">Drop a player here to take them out of the lineup and off the field.</p>
+      </div>
     </section>
   );
 }

@@ -22,7 +22,7 @@ function previewUpdateStatus(): UpdateStatus | null {
     available: true,
     downloading: false,
     progress: 0,
-    version: "0.1.8",
+    version: "0.1.7",
   };
 }
 

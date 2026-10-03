@@ -26,9 +26,6 @@ import { ChemistryMeter } from "./ChemistryMeter";
 import { InsightColumn } from "./InsightColumn";
 import { Dock } from "@/components/shell/Dock";
 import { PlayerEditDrawer } from "./PlayerEditDrawer";
-import { ShowHeader } from "./show/ShowHeader";
-import { BenchPanel } from "./show/BenchPanel";
-import { HintBar } from "./show/HintBar";
 import { rateChemistry } from "@/lib/chemistry";
 import { placeInLineup, placeOnField, reorderLineup as previewReorder } from "@/lib/alignment";
 import { primaryPositionsOf, secondaryPositionsOf, withPositionLists } from "@/lib/positions";
@@ -177,8 +174,6 @@ export function DugoutLayout() {
   const activePlayer = findPlayer(activePlayerId);
 
   const showBoard = view === "lineup" || view === "diamond";
-  const displayedPlayer = findPlayer(selectedId) ?? players.find((player) => player.status !== "archived") ?? null;
-  const highlightId = displayedPlayer?.id ?? null;
 
   return (
     <DndContext
@@ -192,7 +187,7 @@ export function DugoutLayout() {
         setPreview(null);
       }}
     >
-      <div className="broadcast flex h-full min-h-0">
+      <div className="flex h-full min-h-0">
         <Dock
           title="Players"
           side="left"
@@ -215,25 +210,21 @@ export function DugoutLayout() {
           />
         </Dock>
 
-        <div className="broadcast-stage flex-1 min-w-0 min-h-0 flex flex-col">
-          <ShowHeader player={displayedPlayer} />
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
           {view === "squad" && (
             <RosterView
               players={players}
-              selectedId={highlightId}
               onSelect={setSelectedId}
               onEdit={setEditingPlayer}
               onAdd={() => setAdding(true)}
             />
           )}
-          {view === "depth" && (
-            <DepthChart players={players} selectedId={highlightId} onSelect={setSelectedId} />
-          )}
+          {view === "depth" && <DepthChart players={players} />}
           {showBoard && (
-            <div className="flex flex-col flex-1 min-h-0 px-3 gap-3">
-              <div className="show-toolbar flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col h-full min-h-0 p-3 gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <ChemistryMeter report={report} />
-                <div className="show-tools flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   <Switch id="dh-mode" checked={game.useDH} onCheckedChange={() => void game.toggleDH()} />
                   <Label htmlFor="dh-mode" className="text-[12px]">DH {game.useDH ? "on" : "off"}</Label>
                   <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
@@ -283,7 +274,7 @@ export function DugoutLayout() {
                   </Button>
                 </div>
               </div>
-              <div className="show-panels flex-1 min-h-0">
+              <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)] gap-3">
                 {view === "lineup" ? (
                   <>
                     <LineupCard
@@ -291,66 +282,43 @@ export function DugoutLayout() {
                       players={players}
                       fieldPositions={shown.fieldPositions}
                       useDH={shown.useDH}
-                      selectedId={highlightId}
                       onRemove={(order) => void game.removeFromLineup(order)}
                       onSelect={setSelectedId}
                     />
-                    <div className="show-side">
-                      <BenchPanel
-                        players={players}
-                        lineup={shown.lineup}
-                        fieldPositions={shown.fieldPositions}
-                        selectedId={highlightId}
-                        onSelect={setSelectedId}
-                      />
-                      <div className="show-panel show-field-panel p-2 min-h-[200px] overflow-hidden">
-                        <FieldDiagram
-                          fieldPositions={shown.fieldPositions}
-                          players={players}
-                          useDH={shown.useDH}
-                          selectedId={highlightId}
-                          onRemove={(position) => void game.removeFromField(position)}
-                          onSelect={setSelectedId}
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="show-panel show-field-panel p-3 min-h-[280px] overflow-hidden">
+                    <div className="surface-card p-3 min-h-0 overflow-auto">
                       <FieldDiagram
                         fieldPositions={shown.fieldPositions}
                         players={players}
                         useDH={shown.useDH}
-                        selectedId={highlightId}
                         onRemove={(position) => void game.removeFromField(position)}
                         onSelect={setSelectedId}
                       />
                     </div>
-                    <div className="show-side">
-                      <LineupCard
-                        lineup={shown.lineup}
-                        players={players}
+                  </>
+                ) : (
+                  <>
+                    <div className="surface-card p-3 min-h-0 overflow-hidden">
+                      <FieldDiagram
                         fieldPositions={shown.fieldPositions}
+                        players={players}
                         useDH={shown.useDH}
-                        selectedId={highlightId}
-                        onRemove={(order) => void game.removeFromLineup(order)}
-                        onSelect={setSelectedId}
-                      />
-                      <BenchPanel
-                        players={players}
-                        lineup={shown.lineup}
-                        fieldPositions={shown.fieldPositions}
-                        selectedId={highlightId}
+                        onRemove={(position) => void game.removeFromField(position)}
                         onSelect={setSelectedId}
                       />
                     </div>
+                    <LineupCard
+                      lineup={shown.lineup}
+                      players={players}
+                      fieldPositions={shown.fieldPositions}
+                      useDH={shown.useDH}
+                      onRemove={(order) => void game.removeFromLineup(order)}
+                      onSelect={setSelectedId}
+                    />
                   </>
                 )}
               </div>
             </div>
           )}
-          <HintBar />
         </div>
 
         <Dock
@@ -368,7 +336,7 @@ export function DugoutLayout() {
             players={players}
             alignment={alignment}
             report={report}
-            selectedPlayer={displayedPlayer}
+            selectedPlayer={findPlayer(selectedId)}
           />
         </Dock>
       </div>
