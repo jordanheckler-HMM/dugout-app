@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -42,7 +42,12 @@ describe("SettingsMenu", () => {
   it("offers appearance choices and saves the text size locally", () => {
     render(<AppearanceHarness />);
 
-    expect(screen.getByRole("heading", { name: "Appearance" })).toBeTruthy();
+    const dialogs = screen.getAllByRole("dialog");
+    expect(dialogs).toHaveLength(1);
+    const settings = dialogs[0];
+    expect(settings.getAttribute("aria-label")).toBe("Settings");
+    expect(within(settings).getByRole("heading", { name: "Appearance" })).toBeTruthy();
+    expect(within(settings).queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("radio", { name: "System" }).getAttribute("aria-checked")).toBe("true");
     expect(screen.queryByText(/account|sign in|log in/i)).toBeNull();
 
