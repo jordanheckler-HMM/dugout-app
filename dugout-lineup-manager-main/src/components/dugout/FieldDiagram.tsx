@@ -37,19 +37,23 @@ function Spot({
     >
       {player ? (
         <div className="field-player">
-          <button type="button" className="field-player-hit" onClick={() => onSelect(player.id)}>
-            <span className={cn("field-token", `fit-${fit === "out-of-position" ? "out" : fit === "dh-neutral" ? "dh" : fit}`)}>
-              {player.number ?? player.name.slice(0, 1)}
-            </span>
+          <div className="field-token-wrap">
+            <button type="button" className="field-player-hit" onClick={() => onSelect(player.id)}>
+              <span className={cn("field-token", `fit-${fit === "out-of-position" ? "out" : fit === "dh-neutral" ? "dh" : fit}`)}>
+                {player.number ?? player.name.slice(0, 1)}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="icon-button field-remove"
+              aria-label={`Remove ${player.name} from ${spot.position}`}
+              onClick={() => onRemove(spot.position)}
+            >
+              <X />
+            </button>
+          </div>
+          <button type="button" className="field-name-hit" onClick={() => onSelect(player.id)}>
             <span className="field-name">{player.name.split(" ").slice(-1)[0]}</span>
-          </button>
-          <button
-            type="button"
-            className="icon-button field-remove"
-            aria-label={`Remove ${player.name} from ${spot.position}`}
-            onClick={() => onRemove(spot.position)}
-          >
-            <X />
           </button>
         </div>
       ) : (

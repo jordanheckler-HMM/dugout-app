@@ -71,7 +71,7 @@ function LineupRow({
     <div
       ref={sortable.setNodeRef}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={cn("lineup-slot flex items-center gap-2 px-3 py-2", sortable.isOver && "drag-over", !player && "lineup-slot-empty")}
+      className={cn("lineup-slot flex items-center gap-2 py-2 pl-3", player ? "pr-8" : "pr-3", sortable.isOver && "drag-over", !player && "lineup-slot-empty")}
       data-drop-id={`lineup:${slot.order}`}
       {...sortable.attributes}
     >
@@ -84,11 +84,11 @@ function LineupRow({
       >
         {player ? (
           <span className="flex flex-col min-w-0">
-            <span className="flex items-center gap-2">
-              {player.number !== undefined && <span className="text-[11px] text-muted-foreground">#{player.number}</span>}
-              <span className="text-[13px] font-semibold truncate">{player.name}</span>
-              {slot.position && <span className={cn("fit-badge", fitClass(fit))}>{slot.position}</span>}
-              <span className="text-[11px] text-muted-foreground">B {player.bats} / T {player.throws}</span>
+            <span className="flex items-center gap-2 min-w-0">
+              {player.number !== undefined && <span className="shrink-0 text-[11px] text-muted-foreground">#{player.number}</span>}
+              <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{player.name}</span>
+              {slot.position && <span className={cn("fit-badge shrink-0", fitClass(fit))}>{slot.position}</span>}
+              <span className="min-w-0 truncate text-[11px] text-muted-foreground">B {player.bats} / T {player.throws}</span>
             </span>
             <PlayerStatsDisplay playerId={player.id} />
           </span>
@@ -102,7 +102,7 @@ function LineupRow({
         <button
           type="button"
           aria-label={`Remove ${player.name} from lineup`}
-          className="icon-button"
+          className="icon-button lineup-remove"
           onClick={() => onRemove(slot.order)}
         >
           <X />

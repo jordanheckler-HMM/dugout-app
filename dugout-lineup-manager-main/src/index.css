@@ -443,8 +443,10 @@
   .field-dirt { fill: hsl(28 42% 46%); }
   .field-chalk { stroke: hsl(40 30% 92%); stroke-width: 0.6; fill: none; }
   .field-mound { fill: hsl(28 36% 58%); }
-  .field-player { position: relative; display: flex; flex-direction: column; align-items: center; }
-  .field-player-hit { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .field-player { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .field-token-wrap { position: relative; width: 28px; height: 28px; }
+  .field-player-hit, .field-name-hit { display: flex; align-items: center; justify-content: center; }
+  .field-name-hit { max-width: 72px; }
   .field-token {
     width: 28px;
     height: 28px;
@@ -467,7 +469,32 @@
     background: hsl(220 40% 10% / 0.25);
   }
   .field-empty-over { background: hsl(45 80% 50% / 0.45); }
-  .field-remove { position: absolute; top: -6px; right: -8px; background: hsl(var(--card)); }
+  .field-remove {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 99px;
+    background: hsl(var(--card));
+    z-index: 2;
+  }
+  .field-remove svg { width: 8px; height: 8px; }
+  .field-remove::after, .lineup-remove::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+  .lineup-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    z-index: 2;
+  }
+  .lineup-remove svg { width: 10px; height: 10px; }
 
   .roster-card {
     background: hsl(var(--card));
