@@ -368,7 +368,7 @@ export function DugoutLayout() {
             players={players}
             alignment={alignment}
             report={report}
-            selectedPlayer={findPlayer(selectedId)}
+            selectedPlayer={displayedPlayer}
           />
         </Dock>
       </div>
