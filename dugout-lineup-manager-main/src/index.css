@@ -635,19 +635,63 @@
   .corner-dismiss svg { width: 16px; height: 16px; }
   .corner-dismiss:hover { background: hsl(var(--muted)); }
 
-  .corner-action {
-    min-height: 44px;
-    width: 100%;
+  .update-bubble {
+    align-self: flex-start;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 4px 4px 10px;
+  }
+
+  .update-version {
+    margin-right: 4px;
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .update-progress { min-width: 120px; }
+
+  .update-icon-button {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
     border-radius: 8px;
     border: 1px solid hsl(var(--gold));
     background: hsl(220 50% 18%);
     color: hsl(var(--gold));
-    font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0;
+    touch-action: manipulation;
   }
 
-  .corner-action:hover { background: hsl(220 50% 26%); }
+  .update-icon-button svg { width: 18px; height: 18px; }
+  .update-icon-button:hover { background: hsl(220 50% 26%); }
+
+  .update-tooltip {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    font-size: 12px;
+    line-height: 1.2;
+    letter-spacing: 0;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .update-icon-button:hover .update-tooltip,
+  .update-icon-button:focus-visible .update-tooltip { opacity: 1; }
+
+  .update-dismiss { width: 44px; height: 44px; margin-right: 0; }
 
   .corner-meter {
     height: 6px;

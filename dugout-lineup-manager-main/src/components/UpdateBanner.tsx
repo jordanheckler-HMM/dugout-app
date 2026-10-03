@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Download, X } from "lucide-react";
 import { UpdateStatus } from "@/hooks/useAppUpdater";
 
 interface UpdateBannerProps {
@@ -9,27 +9,19 @@ interface UpdateBannerProps {
 }
 
 /**
- * Small update card anchored beside the sidebar.
- * One click still downloads, installs, and relaunches.
+ * Minimal update bubble beside the sidebar.
+ * The icon installs on click or tap. Hover only reveals the label.
  */
 export function UpdateBanner({ status, onInstall, onDismiss, onRetry }: UpdateBannerProps) {
   if (!status.available && !status.downloading && !status.error) return null;
 
-  return (
-    <div className="corner-card" role="status">
-      <div className="corner-card-head">
-        <span className="diamond-mark" aria-hidden />
-        <strong>{status.downloading ? "Downloading" : status.available ? "Update available" : "Updater check failed"}</strong>
-        {!status.downloading && (
-          <button type="button" className="corner-dismiss" aria-label="Dismiss" onClick={onDismiss}>
-            <X />
-          </button>
-        )}
-      </div>
+  const version = status.version ? `v${status.version}` : null;
 
+  return (
+    <div className="corner-card update-bubble" role="status">
       {status.downloading ? (
-        <div>
-          <p className="corner-copy">Downloading update v{status.version}...</p>
+        <div className="update-progress">
+          {version && <p className="update-version">{version}</p>}
           <div
             className="corner-meter"
             role="progressbar"
@@ -41,21 +33,25 @@ export function UpdateBanner({ status, onInstall, onDismiss, onRetry }: UpdateBa
             <div className="corner-meter-fill" style={{ width: `${status.progress}%` }} />
           </div>
         </div>
-      ) : status.available ? (
-        <div className="flex flex-col gap-3">
-          <p className="corner-copy">Dugout v{status.version} is ready.</p>
-          {status.error && <p className="corner-copy">{status.error}</p>}
-          <button type="button" className="corner-action" onClick={onInstall}>
-            Update
-          </button>
-        </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          <p className="corner-copy">{status.error}</p>
-          <button type="button" className="corner-action" onClick={onRetry}>
-            Retry
+        <>
+          {version && <p className="update-version">{version}</p>}
+          {!version && status.error && <p className="update-version">{status.error}</p>}
+          <button
+            type="button"
+            className="update-icon-button"
+            aria-label={status.available ? "Update" : "Retry"}
+            onClick={status.available ? onInstall : onRetry}
+          >
+            <Download />
+            <span className="update-tooltip" role="tooltip">
+              {status.available ? "Update" : "Retry"}
+            </span>
           </button>
-        </div>
+          <button type="button" className="corner-dismiss update-dismiss" aria-label="Dismiss" onClick={onDismiss}>
+            <X />
+          </button>
+        </>
       )}
     </div>
   );
