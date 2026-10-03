@@ -59,10 +59,24 @@ fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
   let data_dir = app.path().app_data_dir()?.join("data");
   std::fs::create_dir_all(&data_dir)?;
 
-  // Refuse to start if another process already owns the backend port.
-  let port_guard = TcpListener::bind(("127.0.0.1", 8100))
-    .map_err(|error| std::io::Error::new(error.kind(), format!("Cannot use backend port 8100: {error}")))?;
-  drop(port_guard);
+  // An updater relaunch can begin while the old one-file sidecar child is
+  // still exiting. Give it a short window to release the port, then surface
+  // a genuine conflict instead of opening against another backend instance.
+  let port_deadline = Instant::now() + Duration::from_secs(5);
+  loop {
+    match TcpListener::bind(("127.0.0.1", 8100)) {
+      Ok(port_guard) => {
+        drop(port_guard);
+        break;
+      }
+      Err(error) if error.kind() == std::io::ErrorKind::AddrInUse && Instant::now() < port_deadline => {
+        std::thread::sleep(Duration::from_millis(100));
+      }
+      Err(error) => {
+        return Err(std::io::Error::new(error.kind(), format!("Cannot use backend port 8100: {error}")).into());
+      }
+    }
+  }
 
   let instance_id = uuid::Uuid::new_v4().to_string();
   let (mut events, child) = app.shell().sidecar("backend-sidecar")?
