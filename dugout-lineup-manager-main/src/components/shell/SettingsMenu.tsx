@@ -109,17 +109,13 @@ export function SettingsMenu({
   }, []);
 
   return (
-    <div id="settings-popover" className="corner-card" role="dialog" aria-label="Settings">
-      <div className="corner-card-head">
-        <span className="diamond-mark" aria-hidden />
-        <strong>Settings</strong>
-        <button id="settings-close" type="button" className="corner-dismiss" aria-label="Close settings" onClick={onClose}>
-          <X />
-        </button>
-      </div>
+    <div id="settings-popover" className="corner-card settings-panel" role="dialog" aria-label="Settings">
+      <button id="settings-close" type="button" className="corner-dismiss settings-panel-close" aria-label="Close settings" onClick={onClose}>
+        <X />
+      </button>
       {SETTINGS_SECTIONS.map((section) => (
-        <section key={section.id} className="corner-section" aria-labelledby={`settings-${section.id}`}>
-          <h2 id={`settings-${section.id}`} className="corner-section-title">{section.title}</h2>
+        <section key={section.id} className="settings-section" aria-labelledby={`settings-${section.id}`}>
+          <h2 id={`settings-${section.id}`} className="settings-section-title">{section.title}</h2>
           {section.render({ textSize, setTextSize })}
         </section>
       ))}

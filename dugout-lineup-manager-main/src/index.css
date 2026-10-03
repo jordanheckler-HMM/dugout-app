@@ -662,13 +662,20 @@
     background: hsl(var(--gold));
   }
 
-  .corner-section { margin-top: 4px; }
-  .corner-section-title {
-    font-size: 13px;
-    font-weight: 700;
+  .settings-panel { position: relative; }
+  .settings-panel-close { position: absolute; top: 2px; right: 2px; }
+  .settings-section + .settings-section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .settings-section-title {
+    margin: 4px 40px 10px 0;
+    font-size: 14px;
+    font-weight: 600;
     letter-spacing: 0;
+    line-height: 1.2;
     color: hsl(var(--foreground));
-    margin-bottom: 8px;
   }
 
   .corner-kicker {
