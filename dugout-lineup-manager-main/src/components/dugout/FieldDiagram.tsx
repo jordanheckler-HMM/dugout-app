@@ -8,6 +8,7 @@ interface FieldDiagramProps {
   fieldPositions: FieldPosition[];
   players: Player[];
   useDH: boolean;
+  selectedId?: string | null;
   onRemove: (position: Position) => void;
   onSelect: (playerId: string) => void;
 }
@@ -15,11 +16,13 @@ interface FieldDiagramProps {
 function Spot({
   spot,
   player,
+  selected,
   onRemove,
   onSelect,
 }: {
   spot: FieldPosition;
   player: Player | null;
+  selected: boolean;
   onRemove: (position: Position) => void;
   onSelect: (playerId: string) => void;
 }) {
@@ -39,7 +42,7 @@ function Spot({
         <div className="field-player">
           <div className="field-token-wrap">
             <button type="button" className="field-player-hit" onClick={() => onSelect(player.id)}>
-              <span className={cn("field-token", `fit-${fit === "out-of-position" ? "out" : fit === "dh-neutral" ? "dh" : fit}`)}>
+              <span className={cn("field-token", selected && "is-selected", `fit-${fit === "out-of-position" ? "out" : fit === "dh-neutral" ? "dh" : fit}`)}>
                 {player.number ?? player.name.slice(0, 1)}
               </span>
             </button>
@@ -63,12 +66,12 @@ function Spot({
   );
 }
 
-export function FieldDiagram({ fieldPositions, players, useDH, onRemove, onSelect }: FieldDiagramProps) {
+export function FieldDiagram({ fieldPositions, players, useDH, selectedId = null, onRemove, onSelect }: FieldDiagramProps) {
   const defensive = fieldPositions.filter((spot) => spot.position !== "DH");
   const dh = fieldPositions.find((spot) => spot.position === "DH");
 
   return (
-    <div className="h-full flex flex-col gap-3 min-h-0">
+    <div className="show-field h-full flex flex-col gap-3 min-h-0">
       <div className="flex items-center justify-center gap-3 text-[12px]">
         <span className="inline-flex items-center gap-1.5"><i className="fit-dot fit-primary" /> Primary</span>
         <span className="inline-flex items-center gap-1.5"><i className="fit-dot fit-secondary" /> Secondary</span>
@@ -96,6 +99,7 @@ export function FieldDiagram({ fieldPositions, players, useDH, onRemove, onSelec
             key={spot.position}
             spot={spot}
             player={spot.playerId ? players.find((player) => player.id === spot.playerId) ?? null : null}
+            selected={spot.playerId === selectedId}
             onRemove={onRemove}
             onSelect={onSelect}
           />
@@ -107,6 +111,7 @@ export function FieldDiagram({ fieldPositions, players, useDH, onRemove, onSelec
             <Spot
               spot={{ ...dh, x: 28, y: 50 }}
               player={dh.playerId ? players.find((player) => player.id === dh.playerId) ?? null : null}
+              selected={dh.playerId === selectedId}
               onRemove={onRemove}
               onSelect={onSelect}
             />
