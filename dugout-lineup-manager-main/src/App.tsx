@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
-import { useAppUpdater } from "@/hooks/useAppUpdater";
+import { UpdateStatus, useAppUpdater } from "@/hooks/useAppUpdater";
 import { AppShell } from "@/components/shell/AppShell";
 import { DugoutLayout } from "@/components/dugout/DugoutLayout";
 import Games from "./pages/Games";
@@ -14,13 +14,26 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function previewUpdateStatus(): UpdateStatus | null {
+  if (!import.meta.env.DEV) return null;
+  if (new URLSearchParams(window.location.search).get("previewUpdate") !== "1") return null;
+  return {
+    checking: false,
+    available: true,
+    downloading: false,
+    progress: 0,
+    version: "0.1.7",
+  };
+}
+
 const AppContent = () => {
   const { status: updateStatus, installUpdate, dismissUpdate, checkForUpdate } = useAppUpdater();
+  const shownStatus = previewUpdateStatus() ?? updateStatus;
 
   return (
     <BrowserRouter>
       <AppShell
-        updateStatus={updateStatus}
+        updateStatus={shownStatus}
         onInstall={installUpdate}
         onDismiss={dismissUpdate}
         onRetry={checkForUpdate}

@@ -11,6 +11,10 @@ yellow, and green window buttons again. Windows and Linux show their
 normal minimize, resize, and close buttons. The window can be dragged
 from the title bar and from the Dugout header.
 
+The update prompt is a small card at the bottom-left, beside Settings
+in the sidebar. Appearance, including theme and text size, is saved on
+this device.
+
 ## Downloads
 
 - macOS Apple Silicon: `.dmg`
