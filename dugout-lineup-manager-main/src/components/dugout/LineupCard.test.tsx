@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DndContext } from "@dnd-kit/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/usePlayerSeasonStats", () => ({
@@ -37,79 +38,62 @@ function makePlayer(overrides: Partial<Player>): Player {
 describe("LineupCard", () => {
   const players: Player[] = [
     makePlayer({ id: "player-1", name: "First Player" }),
-    makePlayer({ id: "player-2", name: "Second Player", number: 18, primaryPosition: "CF", positions: ["CF"] }),
+    makePlayer({ id: "player-2", name: "Noah Patel", number: 18, primaryPosition: "P", positions: ["P"] }),
   ];
   const lineup: LineupSlot[] = [
-    { order: 1, playerId: "player-1", position: null },
+    { order: 1, playerId: "player-1", position: "SS" },
     { order: 2, playerId: null, position: null },
+    { order: 3, playerId: null, position: null },
+    { order: 4, playerId: null, position: null },
+    { order: 5, playerId: null, position: null },
+    { order: 6, playerId: null, position: null },
+    { order: 7, playerId: null, position: null },
+    { order: 8, playerId: null, position: null },
+    { order: 9, playerId: null, position: null },
   ];
   const fieldPositions: FieldPosition[] = [
     { position: "SS", playerId: "player-1", x: 40, y: 42 },
-    { position: "CF", playerId: null, x: 50, y: 18 },
+    { position: "P", playerId: "player-2", x: 50, y: 70 },
   ];
 
-  it("highlights only the active slot during drag and clears highlight after drop", () => {
-    const onAssign = vi.fn();
-    const { container } = render(
-      <LineupCard
-        lineup={lineup}
-        players={players}
-        fieldPositions={fieldPositions}
-        useDH
-        benchPlayerIds={[]}
-        onAssign={onAssign}
-        onRemove={vi.fn()}
-        onReorder={vi.fn()}
-        onAddToBench={vi.fn()}
-        draggingPlayerId="player-1"
-        onDragPlayer={vi.fn()}
-      />,
+  it("removes a batter and shows the pitcher when the DH is off", () => {
+    const onRemove = vi.fn();
+    render(
+      <DndContext>
+        <LineupCard
+          lineup={lineup}
+          players={players}
+          fieldPositions={fieldPositions}
+          useDH={false}
+          onRemove={onRemove}
+          onSelect={vi.fn()}
+        />
+      </DndContext>,
     );
 
-    const slots = container.querySelectorAll(".lineup-slot");
-    const firstSlot = slots[0] as HTMLElement;
-    const secondSlot = slots[1] as HTMLElement;
-
-    fireEvent.dragEnter(secondSlot);
-    expect(secondSlot.className.includes("drag-over")).toBe(true);
-    expect(firstSlot.className.includes("drag-over")).toBe(false);
-
-    fireEvent.drop(secondSlot, { dataTransfer: { getData: () => "player-1" } });
-    expect(onAssign).toHaveBeenCalledWith("player-1", 2, null);
-    expect(secondSlot.className.includes("drag-over")).toBe(false);
+    expect(screen.getByText("Pitcher bats here")).toBeTruthy();
+    const removeButton = screen.getByRole("button", { name: "Remove First Player from lineup" });
+    expect(removeButton.getAttribute("type")).toBe("button");
+    fireEvent.click(removeButton);
+    expect(onRemove).toHaveBeenCalledWith(1);
   });
 
-  it("moves drag highlight to bench and assigns to bench on drop", () => {
-    const onAddToBench = vi.fn();
-    const { container } = render(
-      <LineupCard
-        lineup={lineup}
-        players={players}
-        fieldPositions={fieldPositions}
-        useDH
-        benchPlayerIds={[]}
-        onAssign={vi.fn()}
-        onRemove={vi.fn()}
-        onReorder={vi.fn()}
-        onAddToBench={onAddToBench}
-        draggingPlayerId="player-1"
-        onDragPlayer={vi.fn()}
-      />,
+  it("keeps the pitcher off the card when the DH is on", () => {
+    render(
+      <DndContext>
+        <LineupCard
+          lineup={lineup}
+          players={players}
+          fieldPositions={fieldPositions}
+          useDH
+          onRemove={vi.fn()}
+          onSelect={vi.fn()}
+        />
+      </DndContext>,
     );
 
-    const secondSlot = container.querySelectorAll(".lineup-slot")[1] as HTMLElement;
-    fireEvent.dragEnter(secondSlot);
-    expect(secondSlot.className.includes("drag-over")).toBe(true);
-
-    const benchText = screen.getByText(/Drag players here for bench/i);
-    const benchDropZone = benchText.parentElement as HTMLElement;
-    fireEvent.dragEnter(benchDropZone);
-
-    expect(secondSlot.className.includes("drag-over")).toBe(false);
-    expect(benchDropZone.className.includes("bg-accent/30")).toBe(true);
-
-    fireEvent.drop(benchDropZone, { dataTransfer: { getData: () => "player-1" } });
-    expect(onAddToBench).toHaveBeenCalledWith("player-1");
-    expect(benchDropZone.className.includes("bg-accent/30")).toBe(false);
+    expect(screen.getByText("On the mound")).toBeTruthy();
+    expect(screen.getByText(/Noah Patel is pitching/)).toBeTruthy();
+    expect(screen.queryByText("Pitcher bats here")).toBeNull();
   });
 });

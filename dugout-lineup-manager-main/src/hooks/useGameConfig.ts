@@ -14,6 +14,18 @@ import {
   mapBackendFieldToFrontend,
   mapFrontendFieldToBackend,
 } from '@/api/mappers';
+import {
+  AlignmentState,
+  clearAlignment,
+  placeInLineup,
+  placeOnField,
+  reconcileLineupToField,
+  removeFromField as dropFromField,
+  removeFromLineup as dropFromLineup,
+  reorderLineup as moveLineupOrder,
+  sendToBench,
+  setDhMode,
+} from '@/lib/alignment';
 
 const defaultFieldPositions: FieldPosition[] = [
   { position: 'P', playerId: null, x: 50, y: 60 },
@@ -96,21 +108,20 @@ export function useGameConfig(players?: Player[]) {
         // Load lineup
         const backendLineup = await lineupApi.get();
         const frontendLineup = mapBackendLineupToFrontend(backendLineup);
-        setLineup(frontendLineup);
 
         // Load field positions
         const backendField = await fieldApi.get();
-        let frontendField = mapBackendFieldToFrontend(backendField, createFieldPositions(initialUseDH));
-        
-        // If useDH is true but DH position is missing, add it
-        if (initialUseDH && !frontendField.some(fp => fp.position === 'DH')) {
-          frontendField = [
-            ...frontendField,
-            { position: 'DH' as Position, playerId: null, x: 20, y: 85 }
-          ];
-        }
-        
-        setFieldPositions(frontendField);
+        const loadedUseDH = backendField.some(spot => spot.position === 'DH');
+        const frontendField = mapBackendFieldToFrontend(backendField, createFieldPositions(loadedUseDH));
+        const aligned = reconcileLineupToField({
+          useDH: loadedUseDH,
+          lineup: frontendLineup,
+          fieldPositions: frontendField,
+        });
+
+        setUseDH(aligned.useDH);
+        setLineup(aligned.lineup);
+        setFieldPositions(aligned.fieldPositions);
 
         // Load saved configurations
         const configs = await configurationApi.getAll();
@@ -186,393 +197,70 @@ export function useGameConfig(players?: Player[]) {
     }
   }, [players, loading, lineup, fieldPositions]);
 
-  const toggleDH = useCallback(async () => {
-    const newUseDH = !useDH;
-    
-    // If turning OFF DH
-    if (!newUseDH) {
-      // Find the DH player and the pitcher
-      const dhPosition = fieldPositions.find(fp => fp.position === 'DH');
-      const dhPlayerId = dhPosition?.playerId;
-      const pitcherPosition = fieldPositions.find(fp => fp.position === 'P');
-      const pitcherPlayerId = pitcherPosition?.playerId;
-      
-      // Save the DH player for when DH is turned back on
-      if (dhPlayerId) {
-        setLastDHPlayerId(dhPlayerId);
-      }
-      
-      // Remove DH position from field
-      const newFieldPositions = fieldPositions.filter(fp => fp.position !== 'DH');
-      setFieldPositions(newFieldPositions);
-      
-      // Update lineup: Replace DH with pitcher (if there is one)
-      if (dhPlayerId) {
-        const newLineup = lineup.map(slot => {
-          if (slot.playerId === dhPlayerId) {
-            // Replace DH with pitcher in this lineup spot
-            return { 
-              ...slot, 
-              playerId: pitcherPlayerId || null, 
-              position: pitcherPlayerId ? 'P' : null 
-            };
-          }
-          return slot;
-        });
-        setLineup(newLineup);
-        
-        // Sync to backend
-        try {
-          const backendLineup = mapFrontendLineupToBackend(newLineup);
-          await lineupApi.update(backendLineup);
-        } catch (err) {
-          console.error('Failed to sync lineup:', err);
-        }
-      }
-      
-      // Sync field to backend
-      try {
-        const backendField = mapFrontendFieldToBackend(newFieldPositions);
-        await fieldApi.update(backendField);
-      } catch (err) {
-        console.error('Failed to sync field:', err);
-      }
-    } 
-    // If turning ON DH
-    else {
-      // Add DH position to field, restoring previous DH player if available
-      const newFieldPositions = [
-        ...fieldPositions,
-        { position: 'DH' as Position, playerId: lastDHPlayerId, x: 20, y: 85 }
-      ];
-      setFieldPositions(newFieldPositions);
-      
-      // If we're restoring a DH player, also add them to lineup if not already there
-      if (lastDHPlayerId) {
-        const isInLineup = lineup.some(slot => slot.playerId === lastDHPlayerId);
-        if (!isInLineup) {
-          const emptySlot = lineup.find(slot => !slot.playerId);
-          if (emptySlot) {
-            const newLineup = lineup.map(slot =>
-              slot.order === emptySlot.order
-                ? { ...slot, playerId: lastDHPlayerId, position: 'DH' as Position }
-                : slot
-            );
-            setLineup(newLineup);
-            
-            try {
-              const backendLineup = mapFrontendLineupToBackend(newLineup);
-              await lineupApi.update(backendLineup);
-            } catch (err) {
-              console.error('Failed to sync lineup:', err);
-            }
-          }
-        }
-      }
-      
-      // Sync field to backend
-      try {
-        const backendField = mapFrontendFieldToBackend(newFieldPositions);
-        await fieldApi.update(backendField);
-      } catch (err) {
-        console.error('Failed to sync field:', err);
-      }
-    }
-    
-    setUseDH(newUseDH);
-  }, [useDH, fieldPositions, lineup, lastDHPlayerId]);
-
-  const assignToLineup = useCallback(async (playerId: string, order: number, position: Position | null, players: Player[]) => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    const previousFieldPositions = [...fieldPositions];
-    
-    // Find where the dragged player currently is
-    const currentSlot = lineup.find(slot => slot.playerId === playerId);
-    // Find the target slot
-    const targetSlot = lineup.find(slot => slot.order === order);
-    
-    const newLineup = lineup.map(slot => {
-      // If this is the target slot, put the dragged player here
-      if (slot.order === order) {
-        return { ...slot, playerId, position };
-      }
-      // If this is where the dragged player came from, put the target slot's player here (swap)
-      if (currentSlot && slot.order === currentSlot.order && targetSlot) {
-        return { 
-          ...slot, 
-          playerId: targetSlot.playerId, 
-          position: targetSlot.position 
-        };
-      }
-      // For all other slots, leave them unchanged
-      return slot;
-    });
-    
-    setLineup(newLineup);
+  const commitAlignment = useCallback(async (next: AlignmentState, errorMessage: string) => {
+    const previous: AlignmentState = { useDH, lineup, fieldPositions };
+    setUseDH(next.useDH);
+    setLineup(next.lineup);
+    setFieldPositions(next.fieldPositions);
     setIsDirty(true);
-    
-    // AUTO-SYNC: Also add player to field if not already there
-    let newFieldPositions = fieldPositions;
-    const isOnField = fieldPositions.some(fp => fp.playerId === playerId);
-    if (!isOnField) {
-      const player = players.find(p => p.id === playerId);
-      if (player) {
-        // Try to place at primary position
-        let targetFieldPosition = fieldPositions.find(
-          fp => fp.position === player.primaryPosition && !fp.playerId
-        );
-        
-        // If primary is taken, try secondary positions
-        if (!targetFieldPosition && player.secondaryPositions) {
-          for (const secPos of player.secondaryPositions) {
-            targetFieldPosition = fieldPositions.find(
-              fp => fp.position === secPos && !fp.playerId
-            );
-            if (targetFieldPosition) break;
-          }
-        }
-        
-        // If no preferred position available, find any empty spot (preferring standard positions over DH)
-        if (!targetFieldPosition) {
-          // First try to find an empty standard defensive position
-          targetFieldPosition = fieldPositions.find(fp => fp.position !== 'DH' && !fp.playerId);
-          // If all standard positions are full, then use DH
-          if (!targetFieldPosition) {
-            targetFieldPosition = fieldPositions.find(fp => !fp.playerId);
-          }
-        }
-        
-        // Assign to field
-        if (targetFieldPosition) {
-          newFieldPositions = fieldPositions.map(fp =>
-            fp.position === targetFieldPosition!.position
-              ? { ...fp, playerId }
-              : fp
-          );
-          setFieldPositions(newFieldPositions);
-        }
-      }
-    }
-    
-    // Sync to backend with rollback on error
     await syncWithRollback(
       async () => {
-        const backendLineup = mapFrontendLineupToBackend(newLineup);
-        await lineupApi.update(backendLineup);
-        
-        if (newFieldPositions !== fieldPositions) {
-          const backendField = mapFrontendFieldToBackend(newFieldPositions);
-          await fieldApi.update(backendField);
-        }
+        await lineupApi.update(mapFrontendLineupToBackend(next.lineup));
+        await fieldApi.update(mapFrontendFieldToBackend(next.fieldPositions));
       },
       () => {
-        setLineup(previousLineup);
-        setFieldPositions(previousFieldPositions);
+        setUseDH(previous.useDH);
+        setLineup(previous.lineup);
+        setFieldPositions(previous.fieldPositions);
       },
-      'Failed to save lineup changes'
+      errorMessage,
     );
-    
-    // Remove from bench if present
+  }, [useDH, lineup, fieldPositions, syncWithRollback]);
+
+  const currentAlignment = useCallback((): AlignmentState => ({
+    useDH,
+    lineup,
+    fieldPositions,
+  }), [useDH, lineup, fieldPositions]);
+
+  const toggleDH = useCallback(async () => {
+    const switched = setDhMode(currentAlignment(), !useDH, lastDHPlayerId);
+    setLastDHPlayerId(switched.rememberedDh);
+    await commitAlignment(switched.state, 'Failed to switch DH mode');
+  }, [useDH, lastDHPlayerId, currentAlignment, commitAlignment]);
+
+  const assignToLineup = useCallback(async (playerId: string, order: number, _position: Position | null, players: Player[]) => {
+    const next = placeInLineup(currentAlignment(), playerId, order, players);
     setBenchPlayerIds(prev => prev.filter(id => id !== playerId));
-  }, [lineup, fieldPositions, syncWithRollback]);
+    await commitAlignment(next, 'Failed to save lineup changes');
+  }, [currentAlignment, commitAlignment]);
 
   const removeFromLineup = useCallback(async (order: number) => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    const previousFieldPositions = [...fieldPositions];
-    
-    // Find the player being removed
-    const slotToRemove = lineup.find(slot => slot.order === order);
-    const playerIdToRemove = slotToRemove?.playerId;
-    
-    const newLineup = lineup.map(slot =>
-      slot.order === order ? { ...slot, playerId: null, position: null } : slot
-    );
-    
-    setLineup(newLineup);
-    setIsDirty(true);
-    
-    // AUTO-SYNC: Also remove player from field
-    let newFieldPositions = fieldPositions;
-    if (playerIdToRemove) {
-      newFieldPositions = fieldPositions.map(fp =>
-        fp.playerId === playerIdToRemove ? { ...fp, playerId: null } : fp
-      );
-      setFieldPositions(newFieldPositions);
-    }
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendLineup = mapFrontendLineupToBackend(newLineup);
-        await lineupApi.update(backendLineup);
-        
-        if (playerIdToRemove) {
-          const backendField = mapFrontendFieldToBackend(newFieldPositions);
-          await fieldApi.update(backendField);
-        }
-      },
-      () => {
-        setLineup(previousLineup);
-        setFieldPositions(previousFieldPositions);
-      },
-      'Failed to remove player from lineup'
-    );
-  }, [lineup, fieldPositions, syncWithRollback]);
+    const next = dropFromLineup(currentAlignment(), order);
+    await commitAlignment(next, 'Failed to remove player from lineup');
+  }, [currentAlignment, commitAlignment]);
 
   const reorderLineup = useCallback(async (fromOrder: number, toOrder: number) => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    
-    const newLineup = [...lineup];
-    const fromSlot = newLineup.find(s => s.order === fromOrder);
-    const toSlot = newLineup.find(s => s.order === toOrder);
-    
-    if (fromSlot && toSlot) {
-      const tempPlayerId = fromSlot.playerId;
-      const tempPosition = fromSlot.position;
-      fromSlot.playerId = toSlot.playerId;
-      fromSlot.position = toSlot.position;
-      toSlot.playerId = tempPlayerId;
-      toSlot.position = tempPosition;
-    }
-    
-    setLineup(newLineup);
-    setIsDirty(true);
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendLineup = mapFrontendLineupToBackend(newLineup);
-        await lineupApi.update(backendLineup);
-      },
-      () => {
-        setLineup(previousLineup);
-      },
-      'Failed to reorder lineup'
-    );
-  }, [lineup, syncWithRollback]);
+    const next = moveLineupOrder(currentAlignment(), fromOrder, toOrder);
+    await commitAlignment(next, 'Failed to reorder lineup');
+  }, [currentAlignment, commitAlignment]);
 
   const assignToField = useCallback(async (playerId: string, position: Position) => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    const previousFieldPositions = [...fieldPositions];
-    
-    // Find where the dragged player currently is
-    const currentPosition = fieldPositions.find(fp => fp.playerId === playerId);
-    // Find the target position
-    const targetPosition = fieldPositions.find(fp => fp.position === position);
-    
-    const newFieldPositions = fieldPositions.map(fp => {
-      // If this is the target position, put the dragged player here
-      if (fp.position === position) {
-        return { ...fp, playerId };
-      }
-      // If this is where the dragged player came from, put the target position's player here (swap)
-      if (currentPosition && fp.position === currentPosition.position && targetPosition) {
-        return { 
-          ...fp, 
-          playerId: targetPosition.playerId 
-        };
-      }
-      // For all other positions, leave them unchanged
-      return fp;
-    });
-    
-    setFieldPositions(newFieldPositions);
-    setIsDirty(true);
-    
-    // AUTO-SYNC: Also add player to lineup if not already there
-    let newLineup = lineup;
-    const isInLineup = lineup.some(slot => slot.playerId === playerId);
-    if (!isInLineup) {
-      // Find first empty lineup slot
-      const emptySlot = lineup.find(slot => !slot.playerId);
-      if (emptySlot) {
-        newLineup = lineup.map(slot =>
-          slot.order === emptySlot.order
-            ? { ...slot, playerId, position: null }
-            : slot
-        );
-        setLineup(newLineup);
-      }
-    }
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendField = mapFrontendFieldToBackend(newFieldPositions);
-        await fieldApi.update(backendField);
-        
-        if (newLineup !== lineup) {
-          const backendLineup = mapFrontendLineupToBackend(newLineup);
-          await lineupApi.update(backendLineup);
-        }
-      },
-      () => {
-        setFieldPositions(previousFieldPositions);
-        setLineup(previousLineup);
-      },
-      'Failed to assign player to field'
-    );
-  }, [fieldPositions, lineup, syncWithRollback]);
+    const next = placeOnField(currentAlignment(), playerId, position);
+    setBenchPlayerIds(prev => prev.filter(id => id !== playerId));
+    await commitAlignment(next, 'Failed to save field changes');
+  }, [currentAlignment, commitAlignment]);
 
   const removeFromField = useCallback(async (position: Position) => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    const previousFieldPositions = [...fieldPositions];
-    
-    // Find the player being removed
-    const positionToRemove = fieldPositions.find(fp => fp.position === position);
-    const playerIdToRemove = positionToRemove?.playerId;
-    
-    const newFieldPositions = fieldPositions.map(fp =>
-      fp.position === position ? { ...fp, playerId: null } : fp
-    );
-    
-    setFieldPositions(newFieldPositions);
-    setIsDirty(true);
-    
-    // AUTO-SYNC: Also remove player from lineup
-    let newLineup = lineup;
-    if (playerIdToRemove) {
-      newLineup = lineup.map(slot =>
-        slot.playerId === playerIdToRemove ? { ...slot, playerId: null, position: null } : slot
-      );
-      setLineup(newLineup);
-    }
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendField = mapFrontendFieldToBackend(newFieldPositions);
-        await fieldApi.update(backendField);
-        
-        if (playerIdToRemove) {
-          const backendLineup = mapFrontendLineupToBackend(newLineup);
-          await lineupApi.update(backendLineup);
-        }
-      },
-      () => {
-        setFieldPositions(previousFieldPositions);
-        setLineup(previousLineup);
-      },
-      'Failed to remove player from field'
-    );
-  }, [fieldPositions, lineup, syncWithRollback]);
+    const next = dropFromField(currentAlignment(), position);
+    await commitAlignment(next, 'Failed to remove player from field');
+  }, [currentAlignment, commitAlignment]);
 
-  const addToBench = useCallback((playerId: string) => {
-    // Remove from lineup first
-    setLineup(prev =>
-      prev.map(slot =>
-        slot.playerId === playerId ? { ...slot, playerId: null, position: null } : slot
-      )
-    );
-    setBenchPlayerIds(prev =>
-      prev.includes(playerId) ? prev : [...prev, playerId]
-    );
-  }, []);
+  const addToBench = useCallback(async (playerId: string) => {
+    const next = sendToBench(currentAlignment(), playerId);
+    setBenchPlayerIds(prev => prev.includes(playerId) ? prev : [...prev, playerId]);
+    await commitAlignment(next, 'Failed to move player to the bench');
+  }, [currentAlignment, commitAlignment]);
 
   const removeFromBench = useCallback((playerId: string) => {
     setBenchPlayerIds(prev => prev.filter(id => id !== playerId));
@@ -619,14 +307,18 @@ export function useGameConfig(players?: Player[]) {
       const savedUseDH = backendConfig.use_dh ?? true;
       setUseDH(savedUseDH);
       
-      const frontendLineup = mapBackendLineupToFrontend(backendConfig.lineup);
-      const frontendField = mapBackendFieldToFrontend(
-        backendConfig.field_positions, 
-        createFieldPositions(savedUseDH)
-      );
-      
-      setLineup(frontendLineup);
-      setFieldPositions(frontendField);
+      const aligned = reconcileLineupToField({
+        useDH: savedUseDH,
+        lineup: mapBackendLineupToFrontend(backendConfig.lineup),
+        fieldPositions: mapBackendFieldToFrontend(
+          backendConfig.field_positions,
+          createFieldPositions(savedUseDH),
+        ),
+      });
+
+      setUseDH(aligned.useDH);
+      setLineup(aligned.lineup);
+      setFieldPositions(aligned.fieldPositions);
       setCurrentConfigName(backendConfig.name);
 
       // Also sync these to the current lineup/field endpoints
@@ -652,49 +344,14 @@ export function useGameConfig(players?: Player[]) {
   }, []);
 
   const clearLineup = useCallback(async () => {
-    // Save previous state for rollback
-    const previousLineup = [...lineup];
-    const previousBenchPlayerIds = [...benchPlayerIds];
-    
-    const emptyLineup = createEmptyLineup(useDH);
-    setLineup(emptyLineup);
     setBenchPlayerIds([]);
-    setIsDirty(true);
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendLineup = mapFrontendLineupToBackend(emptyLineup);
-        await lineupApi.update(backendLineup);
-      },
-      () => {
-        setLineup(previousLineup);
-        setBenchPlayerIds(previousBenchPlayerIds);
-      },
-      'Failed to clear lineup'
-    );
-  }, [useDH, lineup, benchPlayerIds, syncWithRollback]);
+    await commitAlignment(clearAlignment(currentAlignment()), 'Failed to clear lineup');
+  }, [currentAlignment, commitAlignment]);
 
   const clearField = useCallback(async () => {
-    // Save previous state for rollback
-    const previousFieldPositions = [...fieldPositions];
-    
-    const emptyFieldPositions = createFieldPositions(useDH);
-    setFieldPositions(emptyFieldPositions);
-    setIsDirty(true);
-    
-    // Sync to backend with rollback on error
-    await syncWithRollback(
-      async () => {
-        const backendField = mapFrontendFieldToBackend(emptyFieldPositions);
-        await fieldApi.update(backendField);
-      },
-      () => {
-        setFieldPositions(previousFieldPositions);
-      },
-      'Failed to clear field'
-    );
-  }, [useDH, fieldPositions, syncWithRollback]);
+    setBenchPlayerIds([]);
+    await commitAlignment(clearAlignment(currentAlignment()), 'Failed to clear field');
+  }, [currentAlignment, commitAlignment]);
 
   return {
     useDH,

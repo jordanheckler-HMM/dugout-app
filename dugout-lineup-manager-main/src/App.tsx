@@ -4,55 +4,53 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { useEcosystemInit } from "@/hooks/useEcosystemInit";
+import { ThemeProvider } from "next-themes";
 import { useAppUpdater } from "@/hooks/useAppUpdater";
-import { UpdateBanner } from "@/components/UpdateBanner";
-import Index from "./pages/Index";
+import { AppShell } from "@/components/shell/AppShell";
+import { DugoutLayout } from "@/components/dugout/DugoutLayout";
 import Games from "./pages/Games";
 import GameStats from "./pages/GameStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-/**
- * Inner app component that uses hooks
- */
 const AppContent = () => {
-  // Initialize ecosystem directory on startup
-  useEcosystemInit();
-
-  // Check for app updates
   const { status: updateStatus, installUpdate, dismissUpdate, checkForUpdate } = useAppUpdater();
 
   return (
-    <>
-      <UpdateBanner
-        status={updateStatus}
+    <BrowserRouter>
+      <AppShell
+        updateStatus={updateStatus}
         onInstall={installUpdate}
         onDismiss={dismissUpdate}
         onRetry={checkForUpdate}
-      />
-      <BrowserRouter>
+      >
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route element={<DugoutLayout />}>
+            <Route path="/" element={<span className="sr-only">Squad</span>} />
+            <Route path="/depth" element={<span className="sr-only">Depth</span>} />
+            <Route path="/lineup" element={<span className="sr-only">Lineup</span>} />
+            <Route path="/diamond" element={<span className="sr-only">Diamond</span>} />
+          </Route>
           <Route path="/games" element={<Games />} />
           <Route path="/games/:gameId/stats" element={<GameStats />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
-    </>
+      </AppShell>
+    </BrowserRouter>
   );
 };
 
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AppContent />
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <AppContent />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </HelmetProvider>
 );

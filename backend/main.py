@@ -926,6 +926,26 @@ async def startup_event():
     print("=" * 60)
 
 
+def _relax_stdio_encoding() -> None:
+    import sys
+
+    """Keep the Windows sidecar alive when the console cannot encode the banner.
+
+    The cp1252 console used by the packaged exe raises UnicodeEncodeError on
+    the startup banner. Replacing unencodable characters avoids that crash
+    without changing the API.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 if __name__ == "__main__":
+    _relax_stdio_encoding()
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=get_backend_port())

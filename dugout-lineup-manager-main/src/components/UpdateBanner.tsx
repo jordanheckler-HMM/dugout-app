@@ -18,11 +18,8 @@ export function UpdateBanner({ status, onInstall, onDismiss, onRetry }: UpdateBa
     return (
         <div
             style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 9999,
+                position: 'relative',
+                zIndex: 20,
                 background: 'linear-gradient(135deg, #1a5fb4 0%, #26a269 100%)',
                 color: 'white',
                 padding: '10px 20px',

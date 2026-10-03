@@ -89,7 +89,7 @@ npm run test:run
 
 ## Desktop Build and Release
 
-Local desktop build flow:
+Local desktop build flow (macOS, Windows, and Linux):
 
 ```bash
 cd dugout-lineup-manager-main
@@ -111,6 +111,8 @@ Automated release workflow:
 
 - `.github/workflows/release-tauri.yml`
 - Triggered by `v*` git tags or manual workflow dispatch
+- Publishes macOS Apple Silicon, macOS Intel, Windows, and Linux installers
+- Builds are not Apple or Windows code-signed
 
 ## Additional Documentation
 

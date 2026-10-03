@@ -127,6 +127,7 @@ export function useAppUpdater() {
     // Auto-check on mount (once)
     useEffect(() => {
         if (hasChecked.current) return;
+        if (!("__TAURI_INTERNALS__" in window)) return;
         hasChecked.current = true;
 
         // Slight delay so the app loads before we hit the network

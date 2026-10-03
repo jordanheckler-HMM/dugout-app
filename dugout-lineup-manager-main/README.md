@@ -64,7 +64,8 @@ If backend host/port changes, update `API_BASE` in `src/api/client.ts`.
 - `npm run test`: Run Vitest in watch mode
 - `npm run test:run`: Run Vitest once
 - `npm run tauri`: Run Tauri CLI commands
-- `npm run build:sidecar`: Build Python backend sidecar binary for Tauri
+- `npm run build:sidecar`: Build the Python backend sidecar for Tauri
+  (macOS, Windows, and Linux)
 
 ## Test and Quality Commands
 
@@ -92,8 +93,7 @@ first, then run your Tauri build flow.
 
 ## Runtime Side Effects
 
-- On app startup, `useEcosystemInit` initializes a shared directory at
-  `~/.hymetalab/` (config/models/data/logs structure).
+- Player, lineup, and game data stay in the local sidecar data directory.
 - In Tauri desktop runtime, the app attempts to launch a backend sidecar and
   sets `DUGOUT_DATA_DIR` for that sidecar process.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dugout",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "identifier": "com.dugout.manager",
   "build": {
     "frontendDist": "../dist",
@@ -17,11 +17,12 @@
         "height": 800,
         "resizable": true,
         "fullscreen": false,
+        "decorations": false,
         "dragDropEnabled": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:8100 http://127.0.0.1:8100 http://localhost:11434 http://127.0.0.1:11434; font-src 'self' data:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:8100 http://127.0.0.1:8100; font-src 'self' data:"
     }
   },
   "bundle": {
