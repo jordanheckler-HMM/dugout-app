@@ -181,6 +181,7 @@ jobs:
 
       - name: Smoke test sidecar health
         if: matrix.platform == 'windows-latest' || matrix.platform == 'ubuntu-22.04'
+        timeout-minutes: 3
         run: bash ../.github/scripts/smoke_sidecar.sh "src-tauri/binaries/backend-sidecar-${{ matrix.target }}${{ matrix.platform == 'windows-latest' && '.exe' || '' }}"
 
       - name: Validate signing secrets
@@ -219,6 +220,7 @@ jobs:
 
       - name: Smoke test Linux AppImage
         if: matrix.platform == 'ubuntu-22.04'
+        timeout-minutes: 3
         run: bash ../.github/scripts/smoke_appimage.sh src-tauri/target
 
   updater-manifest:

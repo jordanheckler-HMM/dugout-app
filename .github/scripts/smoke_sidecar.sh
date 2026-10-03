@@ -41,19 +41,26 @@ esac
 
 if [[ "$IS_WINDOWS" == true ]]; then
   # Git Bash waits forever if a native console exe is backgrounded with &.
-  # Start-Process returns as soon as the process exists.
+  # A detached Python child returns the pid immediately.
   WIN_BIN="$(cygpath -w "$BIN")"
   WIN_OUT="$(cygpath -w "$LOG_DIR/sidecar.out.log")"
   WIN_ERR="$(cygpath -w "$LOG_DIR/sidecar.err.log")"
-  cat >"$LOG_DIR/start-sidecar.ps1" <<EOF
-\$p = Start-Process -FilePath '${WIN_BIN}' -PassThru -WindowStyle Hidden -RedirectStandardOutput '${WIN_OUT}' -RedirectStandardError '${WIN_ERR}'
-Write-Output \$p.Id
+  cat >"$LOG_DIR/start_sidecar.py" <<EOF
+import subprocess
+flags = 0x00000008 | 0x08000000  # DETACHED_PROCESS | CREATE_NO_WINDOW
+process = subprocess.Popen(
+    [r"${WIN_BIN}"],
+    stdout=open(r"${WIN_OUT}", "w"),
+    stderr=open(r"${WIN_ERR}", "w"),
+    creationflags=flags,
+)
+print(process.pid)
 EOF
-  PID="$(powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$LOG_DIR/start-sidecar.ps1")")"
+  PID="$(MSYS_NO_PATHCONV=1 python "$(cygpath -w "$LOG_DIR/start_sidecar.py")")"
   PID="$(printf '%s' "$PID" | tr -d '\r' | awk 'NF{line=$0} END{print line}')"
   echo "Sidecar pid: ${PID:-<empty>}"
-  if [[ -z "$PID" ]]; then
-    echo "Failed to start the Windows sidecar."
+  if [[ ! "$PID" =~ ^[0-9]+$ ]]; then
+    echo "Failed to start the Windows sidecar. Launcher output: ${PID:-<empty>}"
     exit 1
   fi
 else
