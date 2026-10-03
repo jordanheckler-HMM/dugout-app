@@ -19,6 +19,15 @@ struct BackendProcess {
 }
 
 #[cfg(desktop)]
+const BACKEND_STARTING: u8 = 0;
+#[cfg(desktop)]
+const BACKEND_READY: u8 = 1;
+#[cfg(desktop)]
+const BACKEND_CLOSING: u8 = 2;
+#[cfg(desktop)]
+const BACKEND_EXITED: u8 = 3;
+
+#[cfg(desktop)]
 fn show_backend_error(app: &tauri::AppHandle, title: &str, message: String) {
   if let Some(window) = app.get_webview_window("main") {
     let _ = window.hide();
@@ -55,7 +64,22 @@ fn backend_is_ready(instance_id: &str) -> bool {
 }
 
 #[cfg(desktop)]
-fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+fn kill_backend_child(backend: &BackendProcess) {
+  if let Ok(mut child) = backend.child.lock() {
+    if let Some(child) = child.take() {
+      if let Err(error) = child.kill() {
+        log::error!("Could not stop Dugout backend: {error}");
+      }
+    }
+  }
+}
+
+#[cfg(desktop)]
+fn start_backend(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+  let backend = app.state::<BackendProcess>();
+  if backend.status.load(Ordering::SeqCst) != BACKEND_STARTING {
+    return Err(std::io::Error::other("Dugout startup was canceled").into());
+  }
   let data_dir = app.path().app_data_dir()?.join("data");
   std::fs::create_dir_all(&data_dir)?;
 
@@ -64,6 +88,9 @@ fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
   // a genuine conflict instead of opening against another backend instance.
   let port_deadline = Instant::now() + Duration::from_secs(5);
   loop {
+    if backend.status.load(Ordering::SeqCst) != BACKEND_STARTING {
+      return Err(std::io::Error::other("Dugout startup was canceled").into());
+    }
     match TcpListener::bind(("127.0.0.1", 8100)) {
       Ok(port_guard) => {
         drop(port_guard);
@@ -78,6 +105,9 @@ fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     }
   }
 
+  if backend.status.load(Ordering::SeqCst) != BACKEND_STARTING {
+    return Err(std::io::Error::other("Dugout startup was canceled").into());
+  }
   let instance_id = uuid::Uuid::new_v4().to_string();
   let (mut events, child) = app.shell().sidecar("backend-sidecar")?
     .env("DUGOUT_BACKEND_PORT", "8100")
@@ -86,15 +116,32 @@ fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     .env("DUGOUT_HOST_PID", std::process::id().to_string())
     .spawn()?;
 
+  // Own the child before waiting for readiness, so Quit can stop it even
+  // during a slow PyInstaller extraction. Quit may race with spawn itself.
+  {
+    let mut owned_child = match backend.child.lock() {
+      Ok(guard) => guard,
+      Err(_) => {
+        let _ = child.kill();
+        return Err(std::io::Error::other("Could not track Dugout backend process").into());
+      }
+    };
+    if backend.status.load(Ordering::SeqCst) != BACKEND_STARTING {
+      let _ = child.kill();
+      return Err(std::io::Error::other("Dugout startup was canceled").into());
+    }
+    *owned_child = Some(child);
+  }
+
   // Keep draining the sidecar pipes so a chatty backend cannot block on stdout.
-  let status = Arc::new(AtomicU8::new(0)); // starting, ready, closing, exited
-  let event_status = Arc::clone(&status);
-  let app_handle = app.handle().clone();
+  let event_status = Arc::clone(&backend.status);
+  let app_handle = app.clone();
   tauri::async_runtime::spawn(async move {
     while let Some(event) = events.recv().await {
       if let CommandEvent::Terminated(exit) = event {
-        let previous = event_status.swap(3, Ordering::SeqCst);
-        if previous == 1 {
+        let previous = event_status.fetch_update(Ordering::SeqCst, Ordering::SeqCst,
+          |current| if current == BACKEND_CLOSING { None } else { Some(BACKEND_EXITED) });
+        if previous == Ok(BACKEND_READY) {
           log::error!("Dugout backend exited unexpectedly: {:?}", exit.code);
           show_backend_error(&app_handle, "Dugout backend stopped",
             "The local data service stopped. Reopen Dugout to continue.".into());
@@ -106,30 +153,30 @@ fn start_backend(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 
   let deadline = Instant::now() + Duration::from_secs(30);
   while !backend_is_ready(&instance_id) {
-    if status.load(Ordering::SeqCst) == 3 || Instant::now() >= deadline {
-      let _ = child.kill();
+    let current = backend.status.load(Ordering::SeqCst);
+    if current == BACKEND_CLOSING {
+      kill_backend_child(&backend);
+      return Err(std::io::Error::other("Dugout startup was canceled").into());
+    }
+    if current == BACKEND_EXITED || Instant::now() >= deadline {
+      kill_backend_child(&backend);
       return Err(std::io::Error::other("The local data service did not start on port 8100").into());
     }
     std::thread::sleep(Duration::from_millis(100));
   }
-  if status.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+  if backend.status.compare_exchange(BACKEND_STARTING, BACKEND_READY,
+      Ordering::SeqCst, Ordering::SeqCst).is_err() {
+    kill_backend_child(&backend);
     return Err(std::io::Error::other("The local data service exited during startup").into());
   }
-  app.manage(BackendProcess { child: Mutex::new(Some(child)), status });
   Ok(())
 }
 
 #[cfg(desktop)]
 fn stop_backend(app: &tauri::AppHandle) {
   if let Some(backend) = app.try_state::<BackendProcess>() {
-    backend.status.store(2, Ordering::SeqCst);
-    if let Ok(mut child) = backend.child.lock() {
-      if let Some(child) = child.take() {
-        if let Err(error) = child.kill() {
-          log::error!("Could not stop Dugout backend: {error}");
-        }
-      }
-    }
+    backend.status.store(BACKEND_CLOSING, Ordering::SeqCst);
+    kill_backend_child(&backend);
   }
 }
 
@@ -147,10 +194,50 @@ pub fn run() {
         let startup: Result<(), Box<dyn std::error::Error>> = (|| {
           app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
           app.handle().plugin(tauri_plugin_process::init())?;
-          start_backend(app)?;
-          app.get_webview_window("main")
-            .ok_or_else(|| std::io::Error::other("Dugout window was not created"))?
-            .show()?;
+          if !app.manage(BackendProcess {
+            child: Mutex::new(None),
+            status: Arc::new(AtomicU8::new(BACKEND_STARTING)),
+          }) {
+            return Err(std::io::Error::other("Dugout backend state was already registered").into());
+          }
+          let app_handle = app.handle().clone();
+          std::thread::spawn(move || {
+            let result = start_backend(&app_handle).map_err(|error| error.to_string());
+            let ui_app = app_handle.clone();
+            if let Err(error) = app_handle.run_on_main_thread(move || {
+              let Some(backend) = ui_app.try_state::<BackendProcess>() else {
+                return;
+              };
+              if backend.status.load(Ordering::SeqCst) == BACKEND_CLOSING {
+                return;
+              }
+              match result {
+                Ok(()) if backend.status.load(Ordering::SeqCst) == BACKEND_READY => {
+                  let open_result = ui_app.get_webview_window("main")
+                    .ok_or_else(|| "Dugout window was not created".to_string())
+                    .and_then(|window| {
+                      let startup_url = window.url().map_err(|error| error.to_string())?;
+                      let app_url = startup_url.join("/").map_err(|error| error.to_string())?;
+                      window.navigate(app_url).map_err(|error| error.to_string())
+                    });
+                  if let Err(error) = open_result {
+                    show_backend_error(&ui_app, "Dugout could not start",
+                      format!("Dugout could not open its main window.\n\n{error}"));
+                  }
+                }
+                Ok(()) => {}
+                Err(error) => show_backend_error(&ui_app, "Dugout could not start",
+                  format!("Dugout could not start its local data service.\n\n{error}\n\nClose any other Dugout window or service using port 8100, then reopen the app.")),
+              }
+            }) {
+              if app_handle.try_state::<BackendProcess>()
+                .is_some_and(|backend| backend.status.load(Ordering::SeqCst) != BACKEND_CLOSING) {
+                log::error!("Could not finish Dugout startup: {error}");
+                stop_backend(&app_handle);
+                app_handle.exit(1);
+              }
+            }
+          });
           Ok(())
         })();
         if let Err(error) = startup {

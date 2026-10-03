@@ -13,10 +13,11 @@
     "windows": [
       {
         "title": "Dugout",
+        "url": "/splashscreen.html",
         "width": 1280,
         "height": 800,
         "resizable": true,
-        "visible": false,
+        "visible": true,
         "fullscreen": false,
         "dragDropEnabled": false
       }
