@@ -495,6 +495,11 @@
     z-index: 2;
   }
   .lineup-remove svg { width: 10px; height: 10px; }
+  .icon-button.field-remove:hover,
+  .icon-button.lineup-remove:hover {
+    background: hsl(var(--accent));
+    color: hsl(var(--foreground));
+  }
 
   .roster-card {
     background: hsl(var(--card));
