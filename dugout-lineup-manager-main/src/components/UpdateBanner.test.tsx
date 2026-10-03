@@ -44,8 +44,8 @@ describe("UpdateBanner", () => {
     );
 
     expect(screen.getByText(/Dugout v1.2.3/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
-    fireEvent.click(screen.getByRole("button", { name: "Later" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(onInstall).toHaveBeenCalledTimes(1);
     expect(onDismiss).toHaveBeenCalledTimes(1);
 
@@ -65,8 +65,8 @@ describe("UpdateBanner", () => {
     );
 
     expect(screen.getByText(/Downloading update v1.2.3/i)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Now" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Later" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Update" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
 
     rerender(
       <UpdateBanner

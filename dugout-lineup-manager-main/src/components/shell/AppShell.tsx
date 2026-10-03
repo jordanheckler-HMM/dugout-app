@@ -1,11 +1,13 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { CalendarDays, Diamond, ListOrdered, Rows3, Users } from "lucide-react";
+import { CalendarDays, Diamond, ListOrdered, Rows3, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PanelMemory, readPanels, writePanels } from "@/lib/panelState";
 import { TitleBar } from "./TitleBar";
 import { UpdateStatus } from "@/hooks/useAppUpdater";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { SettingsMenu } from "./SettingsMenu";
+import { useTextSize } from "@/hooks/useTextSize";
 
 const NAV = [
   { to: "/", label: "Squad", icon: Users, end: true },
@@ -40,6 +42,10 @@ export function AppShell({
 }) {
   const location = useLocation();
   const [panels, setPanels] = useState<PanelMemory>(() => readPanels());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { textSize, setTextSize } = useTextSize();
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsPopoverRef = useRef<HTMLDivElement>(null);
 
   const update = (patch: Partial<PanelMemory>) => {
     setPanels((current) => {
@@ -62,10 +68,41 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (settingsPopoverRef.current?.contains(target)) return;
+      if (settingsButtonRef.current?.contains(target)) return;
+      setSettingsOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [settingsOpen]);
+
+  const updateVisible = updateStatus.available || updateStatus.downloading || Boolean(updateStatus.error);
+  const stackLeft = Math.round((panels.navCollapsed ? 64 : panels.navWidth) + 12);
+
   return (
     <div className="app-frame">
       <TitleBar title={titleFor(location.pathname)} />
-      <UpdateBanner status={updateStatus} onInstall={onInstall} onDismiss={onDismiss} onRetry={onRetry} />
+      {(settingsOpen || updateVisible) && (
+        <div className="corner-stack" style={{ left: stackLeft }}>
+          {settingsOpen && (
+            <div ref={settingsPopoverRef}>
+              <SettingsMenu onClose={() => setSettingsOpen(false)} textSize={textSize} setTextSize={setTextSize} />
+            </div>
+          )}
+          <UpdateBanner status={updateStatus} onInstall={onInstall} onDismiss={onDismiss} onRetry={onRetry} />
+        </div>
+      )}
       <div className="flex flex-1 min-h-0">
         <nav
           className={cn("app-nav", panels.navCollapsed && "app-nav-collapsed")}
@@ -121,6 +158,20 @@ export function AppShell({
                 </NavLink>
               );
             })}
+          </div>
+          <div className="mt-auto p-2">
+            <button
+              ref={settingsButtonRef}
+              type="button"
+              className={cn("nav-settings", settingsOpen && "nav-settings-open")}
+              aria-expanded={settingsOpen}
+              aria-haspopup="dialog"
+              aria-label={panels.navCollapsed ? "Settings" : undefined}
+              onClick={() => setSettingsOpen((open) => !open)}
+            >
+              <Settings />
+              {!panels.navCollapsed && <span>Settings</span>}
+            </button>
           </div>
         </nav>
         <main className="flex-1 min-w-0 min-h-0">{children}</main>
