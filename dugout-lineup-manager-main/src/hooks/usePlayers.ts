@@ -64,15 +64,23 @@ export function usePlayers() {
       if (updates.bats !== undefined) backendUpdates.bats = updates.bats;
       if (updates.throws !== undefined) backendUpdates.throws = updates.throws;
       if (updates.status !== undefined) backendUpdates.status = updates.status;
-      
-      // Handle positions - check for primaryPosition/secondaryPositions first, then fall back to positions array
-      if (updates.primaryPosition !== undefined) {
+      if (updates.notes !== undefined) backendUpdates.notes = updates.notes;
+
+      if (updates.primaryPositions !== undefined && updates.primaryPositions.length > 0) {
+        backendUpdates.primary_positions = updates.primaryPositions;
+        backendUpdates.primary_position = updates.primaryPositions[0];
+      } else if (updates.primaryPosition !== undefined) {
         backendUpdates.primary_position = updates.primaryPosition;
+        backendUpdates.primary_positions = [updates.primaryPosition];
         backendUpdates.secondary_positions = updates.secondaryPositions || [];
       } else if (updates.positions !== undefined) {
         const [primary, ...secondary] = updates.positions;
         backendUpdates.primary_position = primary;
+        backendUpdates.primary_positions = primary ? [primary] : [];
         backendUpdates.secondary_positions = secondary;
+      }
+      if (updates.secondaryPositions !== undefined) {
+        backendUpdates.secondary_positions = updates.secondaryPositions;
       }
 
       const updatedBackendPlayer = await playersApi.update(id, backendUpdates);

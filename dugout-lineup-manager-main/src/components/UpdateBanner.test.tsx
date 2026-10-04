@@ -43,9 +43,10 @@ describe("UpdateBanner", () => {
       />,
     );
 
-    expect(screen.getByText(/Dugout v1.2.3/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Update Now" }));
-    fireEvent.click(screen.getByRole("button", { name: "Later" }));
+    expect(screen.getByText("v1.2.3")).toBeTruthy();
+    expect(screen.getByRole("tooltip").textContent).toBe("Update");
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(onInstall).toHaveBeenCalledTimes(1);
     expect(onDismiss).toHaveBeenCalledTimes(1);
 
@@ -64,9 +65,10 @@ describe("UpdateBanner", () => {
       />,
     );
 
-    expect(screen.getByText(/Downloading update v1.2.3/i)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Update Now" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Later" })).toBeNull();
+    expect(screen.getByText("v1.2.3")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Download progress" }).getAttribute("aria-valuenow")).toBe("25");
+    expect(screen.queryByRole("button", { name: "Update" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
 
     rerender(
       <UpdateBanner
@@ -83,7 +85,7 @@ describe("UpdateBanner", () => {
       />,
     );
 
-    expect(screen.getByText(/Updater check failed/i)).toBeTruthy();
+    expect(screen.getByText("Temporary updater outage")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DndContext } from "@dnd-kit/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./PlayerCard", () => ({
@@ -74,6 +75,7 @@ describe("PlayersSidebar", () => {
     const fieldPositions: FieldPosition[] = [{ position: "SS", playerId: "active-1", x: 0, y: 0 }];
 
     render(
+      <DndContext>
       <PlayersSidebar
         players={players}
         lineup={lineup}
@@ -82,7 +84,8 @@ describe("PlayersSidebar", () => {
         onUpdatePlayer={vi.fn().mockResolvedValue(undefined)}
         onRemovePlayer={vi.fn().mockResolvedValue(undefined)}
         onDragPlayer={vi.fn()}
-      />,
+      />
+      </DndContext>,
     );
 
     expect(screen.queryByTestId("player-edit-drawer")).toBeNull();
@@ -112,6 +115,7 @@ describe("PlayersSidebar", () => {
     const fieldPositions: FieldPosition[] = [];
 
     render(
+      <DndContext>
       <PlayersSidebar
         players={players}
         lineup={lineup}
@@ -120,7 +124,8 @@ describe("PlayersSidebar", () => {
         onUpdatePlayer={vi.fn().mockResolvedValue(undefined)}
         onRemovePlayer={vi.fn().mockResolvedValue(undefined)}
         onDragPlayer={vi.fn()}
-      />,
+      />
+      </DndContext>,
     );
 
     const addButton = screen.getByRole("button", { name: "Add player" });

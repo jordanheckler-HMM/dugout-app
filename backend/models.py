@@ -8,7 +8,7 @@ These models represent the core domain objects: players, lineups, field position
 import re
 from datetime import date as dt_date
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Constants for validation
 VALID_POSITIONS = ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH']
@@ -32,30 +32,76 @@ def validate_iso_date(v: str) -> str:
     return v
 
 
+def normalize_position_fields(data: dict) -> dict:
+    """Keep one primary string and position arrays in sync.
+
+    Older saves only have ``primary_position``. That value becomes the first
+    (and only) entry in ``primary_positions`` so nothing is dropped. A position
+    listed as primary is removed from the secondary list.
+    """
+    raw_primaries = data.get("primary_positions")
+    legacy = data.get("primary_position")
+    primaries: List[str] = []
+    if isinstance(raw_primaries, list) and len(raw_primaries) > 0:
+        source = raw_primaries
+    elif legacy:
+        source = [legacy]
+    else:
+        source = []
+
+    for pos in source:
+        if pos not in VALID_POSITIONS:
+            raise ValueError(f'Primary position must be one of: {", ".join(VALID_POSITIONS)}')
+        if pos not in primaries:
+            primaries.append(pos)
+
+    secondaries: List[str] = []
+    for pos in data.get("secondary_positions") or []:
+        if pos not in VALID_POSITIONS:
+            raise ValueError(
+                f'Invalid secondary position "{pos}". Must be one of: {", ".join(VALID_POSITIONS)}'
+            )
+        if pos not in primaries and pos not in secondaries:
+            secondaries.append(pos)
+
+    data["primary_positions"] = primaries
+    data["secondary_positions"] = secondaries
+    if primaries:
+        data["primary_position"] = primaries[0]
+    return data
+
+
 class Player(BaseModel):
     """
     Represents a player on the team.
-    
-    Fields:
-    - id: Unique identifier (string)
-    - name: Player's full name
-    - number: Jersey number (optional)
-    - primary_position: Main/natural position (e.g., "SS", "2B")
-    - secondary_positions: List of other positions player can play adequately
-    - bats: Batting hand ("R", "L", "S" for switch)
-    - throws: Throwing hand ("R" or "L")
-    - status: Player availability status ("active", "inactive", "archived")
-    - notes: Free-form coach notes
+
+    ``primary_position`` is the first primary and is kept so older data and
+    clients still round-trip. ``primary_positions`` is the full list. Both
+    secondary positions and extra primaries are optional.
     """
     id: str
     name: str
     number: Optional[int] = None
     primary_position: str
+    primary_positions: List[str] = []
     secondary_positions: Optional[List[str]] = []
     bats: str  # "R", "L", or "S"
     throws: str  # "R" or "L"
     status: Optional[str] = "active"  # "active", "inactive", or "archived"
     notes: Optional[str] = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_positions(cls, data):
+        if isinstance(data, dict):
+            return normalize_position_fields(dict(data))
+        return data
+
+    @model_validator(mode="after")
+    def require_primary(self):
+        if not self.primary_positions:
+            raise ValueError("At least one primary position is required")
+        return self
 
 
 class LineupSlot(BaseModel):
@@ -162,11 +208,25 @@ class PlayerCreate(BaseModel):
     """Request model for creating a new player."""
     name: str = Field(..., min_length=2, max_length=50)
     number: Optional[int] = Field(None, ge=1, le=99)
-    primary_position: str
+    primary_position: Optional[str] = None
+    primary_positions: Optional[List[str]] = None
     secondary_positions: Optional[List[str]] = []
     bats: str
     throws: str
     notes: Optional[str] = ""
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_positions(cls, data):
+        if isinstance(data, dict):
+            return normalize_position_fields(dict(data))
+        return data
+
+    @model_validator(mode="after")
+    def require_primary(self):
+        if not self.primary_positions:
+            raise ValueError("At least one primary position is required")
+        return self
     
     @field_validator('name')
     @classmethod
@@ -174,22 +234,6 @@ class PlayerCreate(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError('Name cannot be empty or just whitespace')
-        return v
-    
-    @field_validator('primary_position')
-    @classmethod
-    def validate_primary_position(cls, v):
-        if v not in VALID_POSITIONS:
-            raise ValueError(f'Primary position must be one of: {", ".join(VALID_POSITIONS)}')
-        return v
-    
-    @field_validator('secondary_positions')
-    @classmethod
-    def validate_secondary_positions(cls, v):
-        if v:
-            for pos in v:
-                if pos not in VALID_POSITIONS:
-                    raise ValueError(f'Invalid secondary position "{pos}". Must be one of: {", ".join(VALID_POSITIONS)}')
         return v
     
     @field_validator('bats')
@@ -212,6 +256,7 @@ class PlayerUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=50)
     number: Optional[int] = Field(None, ge=1, le=99)
     primary_position: Optional[str] = None
+    primary_positions: Optional[List[str]] = None
     secondary_positions: Optional[List[str]] = None
     bats: Optional[str] = None
     throws: Optional[str] = None
@@ -232,6 +277,15 @@ class PlayerUpdate(BaseModel):
     def validate_primary_position(cls, v):
         if v is not None and v not in VALID_POSITIONS:
             raise ValueError(f'Primary position must be one of: {", ".join(VALID_POSITIONS)}')
+        return v
+
+    @field_validator('primary_positions')
+    @classmethod
+    def validate_primary_positions(cls, v):
+        if v:
+            for pos in v:
+                if pos not in VALID_POSITIONS:
+                    raise ValueError(f'Primary position must be one of: {", ".join(VALID_POSITIONS)}')
         return v
     
     @field_validator('secondary_positions')

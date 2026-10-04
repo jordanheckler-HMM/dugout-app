@@ -938,7 +938,56 @@ def get_ollama_models(ollama_url: str | None = None):
     }
 
 
+# --- Application startup ---
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup."""
+    port = get_backend_port()
+    print("=" * 60)
+    print("🧢 Dugout Baseball Coaching API")
+    print("=" * 60)
+    print(f"API running at: http://localhost:{port}")
+    print(f"API docs at: http://localhost:{port}/docs")
+    print(f"Data directory: {storage.data_dir.absolute()}")
+
+    # Check Ollama connection
+    if lyra.check_connection():
+        models = lyra.list_models()
+        print("✓ Ollama connected")
+        print(f"  Available models: {', '.join(models)}")
+        if "lyra-coach:latest" in models:
+            print("  ✓ lyra-coach:latest model ready")
+        else:
+            print("  ⚠ lyra-coach:latest model NOT found - AI features unavailable")
+    else:
+        print("✗ Ollama not connected - AI features unavailable")
+        print("  Start Ollama with: ollama serve")
+
+    print("=" * 60)
+
+
+def _relax_stdio_encoding() -> None:
+    import sys
+
+    """Keep the Windows sidecar alive when the console cannot encode the banner.
+
+    The cp1252 console used by the packaged exe raises UnicodeEncodeError on
+    the startup banner. Replacing unencodable characters avoids that crash
+    without changing the API.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if not callable(reconfigure):
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 if __name__ == "__main__":
+    _relax_stdio_encoding()
     import uvicorn
     host_pid = os.getenv("DUGOUT_HOST_PID")
     if host_pid:

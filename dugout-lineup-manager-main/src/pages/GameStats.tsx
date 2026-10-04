@@ -243,7 +243,7 @@ const GameStats = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className="h-full overflow-auto flex items-center justify-center bg-background">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     );
@@ -251,7 +251,7 @@ const GameStats = () => {
 
   if (!game) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
+      <div className="h-full overflow-auto flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
           <div role={loadError ? 'alert' : undefined} className="text-muted-foreground">
             {loadError || 'Game not found'}
@@ -280,7 +280,7 @@ const GameStats = () => {
         <title>Game Stats - {game.opponent} - Dugout</title>
       </Helmet>
       
-      <div className="h-screen flex flex-col bg-background">
+      <div className="h-full overflow-auto flex flex-col bg-background">
         {/* Header */}
         <div className="border-b border-border px-4 py-2.5">
           <div className="flex items-center justify-between">

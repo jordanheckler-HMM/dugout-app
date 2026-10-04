@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { DndContext } from "@dnd-kit/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { FieldPosition, Player } from "@/types/player";
@@ -36,14 +37,15 @@ describe("FieldDiagram", () => {
     const onRemove = vi.fn();
 
     render(
-      <FieldDiagram
-        fieldPositions={fieldPositions}
-        players={players}
-        onAssign={vi.fn()}
-        onRemove={onRemove}
-        draggingPlayerId={null}
-        onDragPlayer={vi.fn()}
-      />,
+      <DndContext>
+        <FieldDiagram
+          fieldPositions={fieldPositions}
+          players={players}
+          useDH={false}
+          onRemove={onRemove}
+          onSelect={vi.fn()}
+        />
+      </DndContext>,
     );
 
     const removeButton = screen.getByRole("button", { name: "Remove Alex Rivera from SS" });

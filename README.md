@@ -103,14 +103,15 @@ cd dugout-lineup-manager-main
 Automated release workflow:
 
 - `.github/workflows/release-tauri.yml`
-- Builds macOS and Windows bundles from a version-matched `v*` tag
-- Creates a **draft** GitHub release for review; publishing the release is a
-  separate decision
+- Builds macOS Apple Silicon, macOS Intel, Windows, and Linux bundles from a
+  `v*` tag
+- Creates or updates the matching GitHub release; hyphenated tags and the
+  manual prerelease option remain prereleases
 - A Windows installer and signed updater artifacts are not verified until that
   workflow completes successfully on GitHub Actions
-- The workflow uses ad-hoc signing on macOS to avoid a damaged-app warning on
-  Apple Silicon. Apple Developer ID/notarization and Windows Authenticode
-  signing are not configured yet, so downloaded builds may show trust prompts.
+- The workflow requires the Tauri updater signing secret. Apple Developer
+  ID/notarization and Windows Authenticode signing are not configured yet, so
+  downloaded builds may show trust prompts.
 
 Pull requests also run `.github/workflows/desktop-preview.yml`, which builds
 unsigned Apple Silicon, Intel Mac, and Windows previews as Actions artifacts.

@@ -23,12 +23,14 @@ export interface Player {
   id: string;
   name: string;
   number?: number;
-  primaryPosition: Position;        // Main/natural position
-  secondaryPositions: Position[];   // Can play adequately
+  primaryPosition: Position;        // First primary, kept for existing call sites
+  primaryPositions?: Position[];    // Optional extra primaries. One is enough.
+  secondaryPositions: Position[];   // Optional. Empty is fine.
   positions: Position[];             // All positions (for backward compatibility)
   bats: Handedness;
   throws: Handedness;
   status: PlayerStatus;
+  notes?: string;
   stats: PlayerStats;
 }
 

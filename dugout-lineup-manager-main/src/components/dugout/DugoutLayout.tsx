@@ -1,305 +1,418 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Position } from '@/types/player';
-import { usePlayers } from '@/hooks/usePlayers';
-import { useGameConfig } from '@/hooks/useGameConfig';
-import { PlayersSidebar } from './PlayersSidebar';
-import { GameCanvas } from './GameCanvas';
-import { PlayerRankingsPanel } from './PlayerRankingsPanel';
-import { Button } from '@/components/ui/button';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import type { ImperativePanelHandle } from 'react-resizable-panels';
-import { AlertTriangle, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, TrendingUp, Users } from 'lucide-react';
+import { useMemo, useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { Player, Position } from "@/types/player";
+import { usePlayers } from "@/hooks/usePlayers";
+import { useGameConfig } from "@/hooks/useGameConfig";
+import { PlayersSidebar } from "./PlayersSidebar";
+import { LineupCard } from "./LineupCard";
+import { FieldDiagram } from "./FieldDiagram";
+import { RosterView } from "./RosterView";
+import { DepthChart } from "./DepthChart";
+import { ChemistryMeter } from "./ChemistryMeter";
+import { InsightColumn } from "./InsightColumn";
+import { Dock } from "@/components/shell/Dock";
+import { PlayerEditDrawer } from "./PlayerEditDrawer";
+import { ShowHeader } from "./show/ShowHeader";
+import { BenchPanel } from "./show/BenchPanel";
+import { HintBar } from "./show/HintBar";
+import { PitchingStaffPanel } from "./show/PitchingStaffPanel";
+import { rateChemistry } from "@/lib/chemistry";
+import { placeInLineup, placeOnField, reorderLineup as previewReorder } from "@/lib/alignment";
+import { primaryPositionsOf, secondaryPositionsOf, withPositionLists } from "@/lib/positions";
+import { AlignmentState } from "@/lib/alignment";
+import { PanelMemory, readPanels, writePanels } from "@/lib/panelState";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { FolderOpen, RotateCcw, Save, Trash2 } from "lucide-react";
+
+function viewFromPath(pathname: string) {
+  if (pathname.startsWith("/depth")) return "depth";
+  if (pathname.startsWith("/lineup")) return "lineup";
+  if (pathname.startsWith("/diamond")) return "diamond";
+  return "squad";
+}
 
 export function DugoutLayout() {
-  const {
-    players,
-    loading: playersLoading,
-    error: playersError,
-    addPlayer,
-    updatePlayer,
-    removePlayer
-  } = usePlayers();
+  const location = useLocation();
+  const view = viewFromPath(location.pathname);
+  const { players, addPlayer, updatePlayer, removePlayer } = usePlayers();
+  const game = useGameConfig(players);
+  const [panels, setPanels] = useState<PanelMemory>(() => readPanels());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<AlignmentState | null>(null);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [loadOpen, setLoadOpen] = useState(false);
+  const [configName, setConfigName] = useState("");
 
-  const {
-    useDH,
-    toggleDH,
-    lineup,
-    assignToLineup,
-    removeFromLineup,
-    reorderLineup,
-    fieldPositions,
-    assignToField,
-    removeFromField,
-    benchPlayerIds,
-    addToBench,
-    savedConfigs,
-    currentConfigName,
-    saveConfiguration,
-    loadConfiguration,
-    deleteConfiguration,
-    clearLineup,
-    clearField,
-    isDirty,
-    loading: gameLoading,
-    loadError,
-    syncError
-  } = useGameConfig(players);
-
-  const [draggingPlayerId, setDraggingPlayerId] = useState<string | null>(null);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
-
-  const leftPanelRef = useRef<ImperativePanelHandle>(null);
-  const rightPanelRef = useRef<ImperativePanelHandle>(null);
-  const compactLayoutRef = useRef<boolean | null>(null);
-
-  useEffect(() => {
-    if (playersLoading || gameLoading || playersError || loadError) return;
-
-    const updatePanelsForWindow = () => {
-      const compact = window.innerWidth < 1120;
-      if (compactLayoutRef.current === compact) return;
-      compactLayoutRef.current = compact;
-      if (compact) {
-        leftPanelRef.current?.collapse();
-        rightPanelRef.current?.collapse();
-      } else {
-        leftPanelRef.current?.expand();
-        rightPanelRef.current?.expand();
-      }
-    };
-
-    updatePanelsForWindow();
-    window.addEventListener('resize', updatePanelsForWindow);
-    return () => window.removeEventListener('resize', updatePanelsForWindow);
-  }, [playersLoading, gameLoading, playersError, loadError]);
-
-  // Warn on page unload if there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = ''; // Chrome requires returnValue to be set
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDirty]);
-
-  const handleDragPlayer = (playerId: string) => {
-    setDraggingPlayerId(playerId);
-    setSelectedPlayerId(null);
+  const patchPanels = (patch: Partial<PanelMemory>) => {
+    setPanels((current) => {
+      const next = { ...current, ...patch };
+      writePanels(next);
+      return next;
+    });
   };
 
-  const handleDragEnd = () => {
-    setDraggingPlayerId(null);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      if (!(event.metaKey || event.ctrlKey) || event.key !== "\\") return;
+      event.preventDefault();
+      if (event.shiftKey) patchPanels({ insightsCollapsed: !readPanels().insightsCollapsed });
+      else patchPanels({ playersCollapsed: !readPanels().playersCollapsed });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const alignment = useMemo<AlignmentState>(() => ({
+    useDH: game.useDH,
+    lineup: game.lineup,
+    fieldPositions: game.fieldPositions,
+  }), [game.useDH, game.lineup, game.fieldPositions]);
+
+  const shown = preview ?? alignment;
+  const report = useMemo(
+    () => rateChemistry(shown.fieldPositions, players, shown.useDH),
+    [shown.fieldPositions, shown.useDH, players],
+  );
+
+  const findPlayer = (id: string | null) => players.find((player) => player.id === id) ?? null;
+
+  const playerIdFrom = (event: DragOverEvent | DragEndEvent) => {
+    const data = event.active.data.current as { type?: string; playerId?: string; order?: number } | undefined;
+    if (data?.playerId) return { data, playerId: data.playerId };
+    const id = String(event.active.id);
+    if (id.startsWith("player:")) return { data, playerId: id.slice(7) };
+    return { data, playerId: null as string | null };
   };
 
-  const handleAssignToLineup = useCallback((playerId: string, order: number, position: Position | null) => {
-    assignToLineup(playerId, order, position, players);
-    setSelectedPlayerId(null);
-  }, [assignToLineup, players]);
+  const previewDrop = (event: DragOverEvent): AlignmentState | null => {
+    const overId = event.over ? String(event.over.id) : null;
+    if (!overId) return null;
+    const { data, playerId } = playerIdFrom(event);
+    if (!playerId) return null;
+    if (overId.startsWith("field:")) return placeOnField(alignment, playerId, overId.slice(6) as Position);
+    if (overId.startsWith("lineup:")) {
+      const order = Number(overId.slice(7));
+      if (data?.type === "lineup" && data.order) return previewReorder(alignment, data.order, order);
+      return placeInLineup(alignment, playerId, order, players);
+    }
+    return null;
+  };
 
-  const handleAssignToField = useCallback((playerId: string, position: Position) => {
-    assignToField(playerId, position);
-    setSelectedPlayerId(null);
-  }, [assignToField]);
+  const onDragStart = (event: DragStartEvent) => setActiveId(String(event.active.id));
 
-  const selectedPlayer = players.find(player => player.id === selectedPlayerId) ?? null;
+  const onDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
+    setPreview(null);
+    const overId = event.over ? String(event.over.id) : null;
+    if (!overId) return;
+    const data = event.active.data.current as { type?: string; playerId?: string; order?: number } | undefined;
+    const playerId = data?.playerId
+      ?? (String(event.active.id).startsWith("player:") ? String(event.active.id).slice(7) : null);
+    if (!playerId) return;
 
-  if (playersError || loadError) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background px-5">
-        <div role="alert" className="w-full max-w-md rounded-lg border border-destructive/30 bg-card p-6 text-center shadow-sm">
-          <AlertTriangle className="mx-auto h-8 w-8 text-destructive" aria-hidden="true" />
-          <h1 className="mt-3 text-lg font-semibold">Dugout data is unavailable</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Dugout could not load your roster and game setup. Try again, then restart Dugout if this continues.
-          </p>
-          <Button className="mt-5" onClick={() => window.location.reload()}>Try again</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (playersLoading || gameLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background px-5" role="status">
-        <div className="text-center">
-          <Users className="mx-auto h-8 w-8 animate-pulse text-primary/70" aria-hidden="true" />
-          <p className="mt-3 text-sm font-medium">Loading Dugout…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const toggleLeftPanel = () => {
-    if (leftPanelCollapsed) {
-      leftPanelRef.current?.expand();
-    } else {
-      leftPanelRef.current?.collapse();
+    if (overId.startsWith("lineup:")) {
+      const order = Number(overId.slice("lineup:".length));
+      if (data?.type === "lineup" && data.order) await game.reorderLineup(data.order, order);
+      else await game.assignToLineup(playerId, order, null, players);
+      return;
+    }
+    if (overId.startsWith("field:")) {
+      await game.assignToField(playerId, overId.slice("field:".length) as Position);
+      return;
+    }
+    if (overId === "bench") {
+      await game.addToBench(playerId);
+      return;
+    }
+    if (overId.startsWith("depth:")) {
+      const position = overId.slice("depth:".length) as Position;
+      const player = findPlayer(playerId);
+      if (!player) return;
+      const primaries = primaryPositionsOf(player).filter((item) => item !== position);
+      const nextPrimaries = [position, ...primaries];
+      const nextSecondaries = secondaryPositionsOf(player).filter((item) => item !== position);
+      await updatePlayer(player.id, withPositionLists({
+        ...player,
+        primaryPosition: nextPrimaries[0],
+        primaryPositions: nextPrimaries,
+        secondaryPositions: nextSecondaries,
+      }));
+      toast.success(`${player.name} now lists ${position} as a primary`);
     }
   };
 
-  const toggleRightPanel = () => {
-    if (rightPanelCollapsed) {
-      rightPanelRef.current?.expand();
-    } else {
-      rightPanelRef.current?.collapse();
-    }
-  };
+  const activePlayerId = activeId?.startsWith("player:")
+    ? activeId.slice(7)
+    : (game.lineup.find((slot) => `lineup:${slot.order}` === activeId)?.playerId ?? null);
+  const activePlayer = findPlayer(activePlayerId);
+
+  const showBoard = view === "lineup" || view === "diamond";
+  const displayedPlayer = findPlayer(selectedId) ?? players.find((player) => player.status !== "archived") ?? null;
+  const highlightId = displayedPlayer?.id ?? null;
 
   return (
-    <div
-      className="h-screen flex flex-col overflow-hidden bg-background"
-      onDragEnd={handleDragEnd}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={onDragStart}
+      onDragOver={(event) => setPreview(previewDrop(event))}
+      onDragEnd={(event) => void onDragEnd(event)}
+      onDragCancel={() => {
+        setActiveId(null);
+        setPreview(null);
+      }}
     >
-      {syncError && (
-        <div role="alert" className="flex items-center gap-2 border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-foreground">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
-          <span className="min-w-0 flex-1">{syncError} Your last change was restored.</span>
-          <button type="button" onClick={() => window.location.reload()} className="rounded px-2 py-1 font-semibold hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Reload</button>
-        </div>
-      )}
-      <ResizablePanelGroup direction="horizontal" className="min-h-0 flex-1">
-        <ResizablePanel
-          ref={leftPanelRef}
-          defaultSize={24}
-          minSize={16}
-          maxSize={34}
-          collapsible
-          collapsedSize={8}
-          onCollapse={() => setLeftPanelCollapsed(true)}
-          onExpand={() => setLeftPanelCollapsed(false)}
-          className="border-r border-sidebar-border"
+      <div className="broadcast flex h-full min-h-0">
+        <Dock
+          title="Players"
+          side="left"
+          width={panels.playersWidth}
+          collapsed={panels.playersCollapsed}
+          min={220}
+          max={420}
+          onWidth={(playersWidth) => patchPanels({ playersWidth })}
+          onToggle={() => patchPanels({ playersCollapsed: !panels.playersCollapsed })}
+          toggleLabel={panels.playersCollapsed ? "Expand players panel" : "Collapse players panel"}
         >
-          {leftPanelCollapsed ? (
-            <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col items-center justify-between py-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleLeftPanel}
-                aria-label="Expand players panel"
-                className="h-9 w-9 text-sidebar-foreground/80 hover:text-sidebar-foreground"
-              >
-                <PanelLeftOpen className="w-3.5 h-3.5" />
-              </Button>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-sidebar-foreground/70 [writing-mode:vertical-rl] [transform:rotate(180deg)]">
-                Players
-              </span>
-            </div>
-          ) : (
-            <div className="relative h-full">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleLeftPanel}
-                aria-label="Collapse players panel"
-                className="absolute right-1 top-1 z-20 h-6 w-6 bg-sidebar/70 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-                title="Collapse players panel"
-              >
-                <PanelLeftClose className="w-3.5 h-3.5" />
-              </Button>
-              <PlayersSidebar
-                players={players}
-                lineup={lineup}
-                fieldPositions={fieldPositions}
-                onAddPlayer={addPlayer}
-                onUpdatePlayer={updatePlayer}
-                onRemovePlayer={removePlayer}
-                onDragPlayer={handleDragPlayer}
-                selectedPlayerId={selectedPlayerId}
-                onSelectPlayer={(playerId) => setSelectedPlayerId(current => current === playerId ? null : playerId)}
-              />
-            </div>
-          )}
-        </ResizablePanel>
-
-        <ResizableHandle className="bg-border/70 hover:bg-border" />
-
-        <ResizablePanel defaultSize={52} minSize={34} className="min-w-0">
-          <GameCanvas
-            lineup={lineup}
-            fieldPositions={fieldPositions}
+          <PlayersSidebar
             players={players}
-            selectedPlayer={selectedPlayer}
-            onClearSelectedPlayer={() => setSelectedPlayerId(null)}
-            onOpenPlayers={() => leftPanelRef.current?.expand()}
-            playersPanelCollapsed={leftPanelCollapsed}
-            useDH={useDH}
-            benchPlayerIds={benchPlayerIds}
-            savedConfigs={savedConfigs}
-            currentConfigName={currentConfigName}
-            onToggleDH={toggleDH}
-            onAssignToLineup={handleAssignToLineup}
-            onRemoveFromLineup={removeFromLineup}
-            onReorderLineup={reorderLineup}
-            onAssignToField={handleAssignToField}
-            onRemoveFromField={removeFromField}
-            onAddToBench={addToBench}
-            onSaveConfig={saveConfiguration}
-            onLoadConfig={loadConfiguration}
-            onDeleteConfig={deleteConfiguration}
-            onClearLineup={clearLineup}
-            onClearField={clearField}
-            draggingPlayerId={draggingPlayerId}
-            onDragPlayer={handleDragPlayer}
+            lineup={game.lineup}
+            fieldPositions={game.fieldPositions}
+            onAddPlayer={addPlayer}
+            onUpdatePlayer={updatePlayer}
+            onRemovePlayer={removePlayer}
+            onSelect={setSelectedId}
           />
-        </ResizablePanel>
+        </Dock>
 
-        <ResizableHandle className="bg-border/70 hover:bg-border" />
-
-        <ResizablePanel
-          ref={rightPanelRef}
-          defaultSize={24}
-          minSize={18}
-          maxSize={36}
-          collapsible
-          collapsedSize={8}
-          onCollapse={() => setRightPanelCollapsed(true)}
-          onExpand={() => setRightPanelCollapsed(false)}
-          className="border-l border-lyra-border"
-        >
-          {rightPanelCollapsed ? (
-            <div className="h-full bg-card text-card-foreground flex flex-col items-center justify-between py-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleRightPanel}
-                aria-label="Expand right panel"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <PanelRightOpen className="w-3.5 h-3.5" />
-              </Button>
-              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground [writing-mode:vertical-rl]">
-                Season stats
-              </span>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col">
-              <div className="flex border-b border-border bg-card h-10 items-center px-3 gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold">Season leaders</span>
-                <button
-                  type="button"
-                  onClick={toggleRightPanel}
-                  aria-label="Collapse right panel"
-                  className="ml-auto rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  title="Collapse right panel"
-                >
-                  <PanelRightClose className="w-3.5 h-3.5" />
-                </button>
+        <div className="broadcast-stage flex-1 min-w-0 min-h-0 flex flex-col">
+          <ShowHeader player={displayedPlayer} />
+          {view === "squad" && (
+            <RosterView
+              players={players}
+              selectedId={highlightId}
+              onSelect={setSelectedId}
+              onEdit={setEditingPlayer}
+              onAdd={() => setAdding(true)}
+            />
+          )}
+          {view === "depth" && (
+            <DepthChart players={players} selectedId={highlightId} onSelect={setSelectedId} />
+          )}
+          {showBoard && (
+            <div className="flex flex-col flex-1 min-h-0 px-3 gap-3">
+              <div className="show-toolbar flex flex-wrap items-center justify-between gap-3">
+                <ChemistryMeter report={report} />
+                <div className="show-tools flex flex-wrap items-center gap-2">
+                  <Switch id="dh-mode" checked={game.useDH} onCheckedChange={() => void game.toggleDH()} />
+                  <Label htmlFor="dh-mode" className="text-[12px]">DH {game.useDH ? "on" : "off"}</Label>
+                  <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+                    <DialogTrigger asChild>
+                      <Button type="button" size="sm" variant="outline" aria-label="Save configuration"><Save /> Save</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Save lineup</DialogTitle></DialogHeader>
+                      <Input value={configName} onChange={(event) => setConfigName(event.target.value)} placeholder="Friday starter" />
+                      <Button
+                        type="button"
+                        disabled={!configName.trim()}
+                        onClick={() => {
+                          void game.saveConfiguration(configName.trim());
+                          setConfigName("");
+                          setSaveOpen(false);
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </DialogContent>
+                  </Dialog>
+                  {game.savedConfigs.length > 0 && (
+                    <Dialog open={loadOpen} onOpenChange={setLoadOpen}>
+                      <DialogTrigger asChild>
+                        <Button type="button" size="sm" variant="outline" aria-label="Load configuration"><FolderOpen /> Load</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Saved lineups</DialogTitle></DialogHeader>
+                        <div className="space-y-2">
+                          {game.savedConfigs.map((config) => (
+                            <div key={config.id} className="flex items-center gap-2">
+                              <button type="button" className="text-button flex-1 text-left" onClick={() => { setLoadOpen(false); void game.loadConfiguration(config.id); }}>
+                                {config.name} · {config.useDH ? "DH" : "No DH"}
+                              </button>
+                              <button type="button" aria-label={`Delete ${config.name} configuration`} className="icon-button" onClick={() => void game.deleteConfiguration(config.id)}>
+                                <Trash2 />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                  <Button type="button" size="sm" variant="ghost" aria-label="Clear lineup and field" onClick={() => void game.clearLineup()}>
+                    <RotateCcw /> Clear
+                  </Button>
+                </div>
               </div>
-
-              <div className="flex-1 min-h-0">
-                <PlayerRankingsPanel players={players} />
+              <div className="show-panels flex-1 min-h-0">
+                {view === "lineup" ? (
+                  <>
+                    <LineupCard
+                      lineup={shown.lineup}
+                      players={players}
+                      fieldPositions={shown.fieldPositions}
+                      useDH={shown.useDH}
+                      selectedId={highlightId}
+                      onRemove={(order) => void game.removeFromLineup(order)}
+                      onSelect={setSelectedId}
+                    />
+                    <div className="show-side">
+                      <BenchPanel
+                        players={players}
+                        lineup={shown.lineup}
+                        fieldPositions={shown.fieldPositions}
+                        selectedId={highlightId}
+                        onSelect={setSelectedId}
+                      />
+                      <PitchingStaffPanel
+                        players={players}
+                        fieldPositions={shown.fieldPositions}
+                        selectedId={highlightId}
+                        onSelect={setSelectedId}
+                      />
+                      <div className="show-panel show-field-panel p-2 min-h-[200px] overflow-hidden">
+                        <FieldDiagram
+                          fieldPositions={shown.fieldPositions}
+                          players={players}
+                          useDH={shown.useDH}
+                          selectedId={highlightId}
+                          onRemove={(position) => void game.removeFromField(position)}
+                          onSelect={setSelectedId}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="show-panel show-field-panel p-3 min-h-[280px] overflow-hidden">
+                      <FieldDiagram
+                        fieldPositions={shown.fieldPositions}
+                        players={players}
+                        useDH={shown.useDH}
+                        selectedId={highlightId}
+                        onRemove={(position) => void game.removeFromField(position)}
+                        onSelect={setSelectedId}
+                      />
+                    </div>
+                    <div className="show-side">
+                      <LineupCard
+                        lineup={shown.lineup}
+                        players={players}
+                        fieldPositions={shown.fieldPositions}
+                        useDH={shown.useDH}
+                        selectedId={highlightId}
+                        onRemove={(order) => void game.removeFromLineup(order)}
+                        onSelect={setSelectedId}
+                      />
+                      <BenchPanel
+                        players={players}
+                        lineup={shown.lineup}
+                        fieldPositions={shown.fieldPositions}
+                        selectedId={highlightId}
+                        onSelect={setSelectedId}
+                      />
+                      <PitchingStaffPanel
+                        players={players}
+                        fieldPositions={shown.fieldPositions}
+                        selectedId={highlightId}
+                        onSelect={setSelectedId}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+          <HintBar />
+        </div>
+
+        <Dock
+          title="Board"
+          side="right"
+          width={panels.insightsWidth}
+          collapsed={panels.insightsCollapsed}
+          min={260}
+          max={460}
+          onWidth={(insightsWidth) => patchPanels({ insightsWidth })}
+          onToggle={() => patchPanels({ insightsCollapsed: !panels.insightsCollapsed })}
+          toggleLabel={panels.insightsCollapsed ? "Expand board panel" : "Collapse board panel"}
+        >
+          <InsightColumn
+            players={players}
+            alignment={alignment}
+            report={report}
+            selectedPlayer={displayedPlayer}
+          />
+        </Dock>
+      </div>
+      <Outlet />
+      <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.2, 0, 0, 1)" }}>
+        {activePlayer ? (
+          <div className="drag-chip">
+            <strong>{activePlayer.number ? `#${activePlayer.number} ` : ""}{activePlayer.name}</strong>
+            <span>{primaryPositionsOf(activePlayer).join(" / ")}</span>
+          </div>
+        ) : null}
+      </DragOverlay>
+      <PlayerEditDrawer
+        player={editingPlayer}
+        isOpen={adding || Boolean(editingPlayer)}
+        allPlayers={players}
+        onClose={() => {
+          setAdding(false);
+          setEditingPlayer(null);
+        }}
+        onSave={async (data) => {
+          if (editingPlayer) await updatePlayer(editingPlayer.id, data);
+          else await addPlayer(data as Omit<Player, "id">);
+          setAdding(false);
+          setEditingPlayer(null);
+        }}
+        onRemove={editingPlayer ? async () => {
+          await removePlayer(editingPlayer.id);
+          setEditingPlayer(null);
+        } : undefined}
+      />
+    </DndContext>
   );
 }

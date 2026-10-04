@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dugout",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "identifier": "com.dugout.manager",
   "build": {
     "frontendDist": "../dist",
@@ -17,8 +17,11 @@
         "width": 1280,
         "height": 800,
         "resizable": true,
-        "visible": true,
         "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "titleBarStyle": "Visible",
+        "hiddenTitle": false,
         "dragDropEnabled": false
       }
     ],

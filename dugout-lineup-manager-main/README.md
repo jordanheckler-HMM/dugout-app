@@ -89,8 +89,8 @@ For desktop packaging:
 
 For production desktop builds, ensure sidecar/backend packaging is set up
 first, then run `npm run tauri build` on the target operating system. The
-GitHub Actions release workflow builds macOS and Windows bundles into a draft
-release from a version-matched tag.
+GitHub Actions release workflow builds macOS, Windows, and Linux bundles from
+a `v*` tag and publishes the matching release after the build matrix succeeds.
 
 ## Runtime Side Effects
 

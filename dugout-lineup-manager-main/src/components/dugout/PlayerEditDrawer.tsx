@@ -9,12 +9,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectLabel,
-  SelectSeparator,
-  SelectGroup,
 } from '@/components/ui/select';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Plus, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { primaryPositionsOf, secondaryPositionsOf, withPositionLists } from '@/lib/positions';
 
 interface PlayerEditDrawerProps {
   player: Player | null;
@@ -40,8 +39,9 @@ const statusOptions: { value: PlayerStatus; label: string }[] = [
 export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, allPlayers = [] }: PlayerEditDrawerProps) {
   const [name, setName] = useState('');
   const [number, setNumber] = useState<number | undefined>();
-  const [primaryPosition, setPrimaryPosition] = useState<Position>('SS');
+  const [primaryPositions, setPrimaryPositions] = useState<Position[]>(['SS']);
   const [secondaryPositions, setSecondaryPositions] = useState<Position[]>([]);
+  const [notes, setNotes] = useState('');
   const [bats, setBats] = useState<Handedness>('R');
   const [throws_, setThrows] = useState<Handedness>('R');
   const [status, setStatus] = useState<PlayerStatus>('active');
@@ -52,18 +52,21 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
 
   useEffect(() => {
     if (player) {
+      const primaries = primaryPositionsOf(player);
       setName(player.name);
       setNumber(player.number);
-      setPrimaryPosition(player.primaryPosition);
-      setSecondaryPositions(player.secondaryPositions || []);
+      setPrimaryPositions(primaries.length > 0 ? primaries : ['SS']);
+      setSecondaryPositions(secondaryPositionsOf(player));
+      setNotes(player.notes ?? '');
       setBats(player.bats);
       setThrows(player.throws);
       setStatus(player.status);
     } else {
       setName('');
       setNumber(undefined);
-      setPrimaryPosition('SS');
+      setPrimaryPositions(['SS']);
       setSecondaryPositions([]);
+      setNotes('');
       setBats('R');
       setThrows('R');
       setStatus('active');
@@ -71,7 +74,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
     // Reset validation errors when player changes
     setNameError(null);
     setNumberError(null);
-  }, [player]);
+  }, [player, isOpen]);
 
   // Validate name
   const validateName = (value: string) => {
@@ -127,33 +130,59 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
     validateNumber(num);
   };
 
-  const toggleSecondaryPosition = (pos: Position) => {
-    setSecondaryPositions(prev =>
-      prev.includes(pos)
-        ? prev.filter(p => p !== pos)
-        : [...prev, pos]
-    );
+  const taken = new Set<Position>([...primaryPositions, ...secondaryPositions]);
+  const firstOpen = allPositions.find((position) => !taken.has(position));
+
+  const setPrimaryAt = (index: number, value: Position) => {
+    setPrimaryPositions((current) => {
+      const next = [...current];
+      next[index] = value;
+      return next.filter((position, itemIndex) => next.indexOf(position) === itemIndex);
+    });
+    setSecondaryPositions((current) => current.filter((position) => position !== value));
+  };
+
+  const setSecondaryAt = (index: number, value: Position) => {
+    setSecondaryPositions((current) => {
+      const next = [...current];
+      next[index] = value;
+      return next.filter((position) => !primaryPositions.includes(position))
+        .filter((position, itemIndex, list) => list.indexOf(position) === itemIndex);
+    });
   };
 
   const handleSave = () => {
-    // Validate all fields before saving
     const isNameValid = validateName(name);
     const isNumberValid = validateNumber(number);
-    
-    if (!isNameValid || !isNumberValid || !primaryPosition) {
-      return;
-    }
-    
-    onSave({
+    if (!isNameValid || !isNumberValid || primaryPositions.length === 0) return;
+
+    const draft: Player = {
+      id: player?.id ?? 'draft',
       name: name.trim(),
       number,
-      primaryPosition,
+      primaryPosition: primaryPositions[0],
+      primaryPositions,
       secondaryPositions,
-      positions: [primaryPosition, ...secondaryPositions], // Combined for backward compatibility
+      positions: [...primaryPositions, ...secondaryPositions],
       bats,
       throws: throws_,
       status,
-      stats: player?.stats ?? {}
+      notes,
+      stats: player?.stats ?? {},
+    };
+    const saved = withPositionLists(draft);
+    onSave({
+      name: saved.name,
+      number: saved.number,
+      primaryPosition: saved.primaryPosition,
+      primaryPositions: saved.primaryPositions,
+      secondaryPositions: saved.secondaryPositions,
+      positions: saved.positions,
+      bats: saved.bats,
+      throws: saved.throws,
+      status: saved.status,
+      notes: saved.notes,
+      stats: saved.stats,
     });
   };
 
@@ -162,7 +191,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
     return (
       name.trim().length >= 2 &&
       name.trim().length <= 50 &&
-      primaryPosition &&
+      primaryPositions.length > 0 &&
       !nameError &&
       !numberError
     );
@@ -221,72 +250,71 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
             )}
           </div>
 
-          {/* Primary Position */}
           <div className="space-y-2">
-            <Label htmlFor="primary-position">Primary Position</Label>
-            <Select value={primaryPosition} onValueChange={(value) => setPrimaryPosition(value as Position)}>
-              <SelectTrigger id="primary-position" className="bg-background">
-                <SelectValue placeholder="Select primary position" />
-              </SelectTrigger>
-              <SelectContent position="item-aligned">
-                <SelectGroup>
-                  <SelectLabel>Battery</SelectLabel>
-                  <SelectItem value="P">P</SelectItem>
-                  <SelectItem value="C">C</SelectItem>
-                </SelectGroup>
-                
-                <SelectSeparator />
-                
-                <SelectGroup>
-                  <SelectLabel>Infield</SelectLabel>
-                  <SelectItem value="1B">1B</SelectItem>
-                  <SelectItem value="2B">2B</SelectItem>
-                  <SelectItem value="3B">3B</SelectItem>
-                  <SelectItem value="SS">SS</SelectItem>
-                </SelectGroup>
-                
-                <SelectSeparator />
-                
-                <SelectGroup>
-                  <SelectLabel>Outfield</SelectLabel>
-                  <SelectItem value="LF">LF</SelectItem>
-                  <SelectItem value="CF">CF</SelectItem>
-                  <SelectItem value="RF">RF</SelectItem>
-                </SelectGroup>
-                
-                <SelectSeparator />
-                
-                <SelectItem value="DH">DH</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="primary-position">Primary position</Label>
+            {primaryPositions.map((position, index) => (
+              <div key={`primary-${index}`} className="flex items-center gap-2">
+                <Select value={position} onValueChange={(value) => setPrimaryAt(index, value as Position)}>
+                  <SelectTrigger id={index === 0 ? 'primary-position' : `primary-position-${index}`} className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allPositions.filter((option) => option === position || (!primaryPositions.includes(option) && !secondaryPositions.includes(option))).map((option) => (
+                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {index > 0 && (
+                  <button type="button" className="icon-button" aria-label={`Remove extra primary ${position}`} onClick={() => setPrimaryPositions((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                    <X />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-button"
+              disabled={!firstOpen}
+              onClick={() => firstOpen && setPrimaryPositions((current) => [...current, firstOpen])}
+            >
+              <Plus className="inline w-3.5 h-3.5" /> Add another primary
+            </button>
           </div>
 
-          {/* Secondary Positions */}
           <div className="space-y-2">
-            <Label>Secondary Positions (Optional)</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {allPositions
-                .filter(pos => pos !== primaryPosition)
-                .map(pos => (
-                  <button
-                    type="button"
-                    key={pos}
-                    onClick={() => toggleSecondaryPosition(pos)}
-                    aria-pressed={secondaryPositions.includes(pos)}
-                    className={cn(
-                      'px-2.5 py-1.5 rounded text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
-                      secondaryPositions.includes(pos)
-                        ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    )}
-                  >
-                    {pos}
-                  </button>
-                ))}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Primary = Green, Secondary = Yellow, Others = Red when on field
-            </p>
+            <Label>Secondary position</Label>
+            {secondaryPositions.length === 0 ? (
+              <p className="empty-copy">No secondary position. One is optional.</p>
+            ) : secondaryPositions.map((position, index) => (
+              <div key={`secondary-${index}`} className="flex items-center gap-2">
+                <Select value={position} onValueChange={(value) => setSecondaryAt(index, value as Position)}>
+                  <SelectTrigger id={index === 0 ? 'secondary-position' : `secondary-position-${index}`} className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allPositions.filter((option) => option === position || (!primaryPositions.includes(option) && !secondaryPositions.includes(option))).map((option) => (
+                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button type="button" className="icon-button" aria-label={`Remove secondary ${position}`} onClick={() => setSecondaryPositions((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                  <X />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-button"
+              disabled={!firstOpen}
+              onClick={() => firstOpen && setSecondaryPositions((current) => [...current, firstOpen])}
+            >
+              <Plus className="inline w-3.5 h-3.5" /> {secondaryPositions.length === 0 ? 'Add a secondary' : 'Add another secondary'}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea id="notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional note from the coach" className="bg-background min-h-20" />
           </div>
 
           {/* Bats */}
@@ -298,6 +326,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
                   type="button"
                   key={opt.value}
                   onClick={() => setBats(opt.value)}
+                  aria-label={`Bats ${opt.label}`}
                   aria-pressed={bats === opt.value}
                   className={cn(
                     'flex-1 py-2 rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',
@@ -321,6 +350,7 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
                   type="button"
                   key={opt.value}
                   onClick={() => setThrows(opt.value)}
+                  aria-label={`Throws ${opt.label}`}
                   aria-pressed={throws_ === opt.value}
                   className={cn(
                     'flex-1 py-2 rounded text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1',

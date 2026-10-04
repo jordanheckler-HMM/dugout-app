@@ -1,10 +1,10 @@
 [package]
 name = "app"
-version = "0.1.6"
-description = "Dugout baseball coaching desktop app"
-authors = ["Jordan Anthony Heckler"]
+version = "0.1.8"
+description = "A Tauri App"
+authors = ["you"]
 license = ""
-repository = "https://github.com/jordanheckler-HMM/dugout-app"
+repository = ""
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -24,6 +24,7 @@ log = "0.4"
 tauri = { version = "2.9.5", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2.10.0"
 tauri-plugin-process = "2.3.1"

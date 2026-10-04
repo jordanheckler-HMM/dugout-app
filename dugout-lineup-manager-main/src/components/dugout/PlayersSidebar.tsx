@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import { Player, PlayerStatus, LineupSlot, FieldPosition } from '@/types/player';
 import { PlayerCard } from './PlayerCard';
 import { PlayerEditDrawer } from './PlayerEditDrawer';
@@ -14,9 +15,38 @@ interface PlayersSidebarProps {
   onAddPlayer: (player: Omit<Player, 'id'>) => Promise<unknown>;
   onUpdatePlayer: (id: string, updates: Partial<Player>) => Promise<void>;
   onRemovePlayer: (id: string) => Promise<void>;
-  onDragPlayer: (playerId: string) => void;
-  selectedPlayerId?: string | null;
-  onSelectPlayer?: (playerId: string) => void;
+  onDragPlayer?: (playerId: string) => void;
+  onSelect?: (playerId: string) => void;
+}
+
+function DraggablePlayer({
+  player,
+  isActive,
+  onEdit,
+  onSelect,
+}: {
+  player: Player;
+  isActive: boolean;
+  onEdit: () => void;
+  onSelect?: (playerId: string) => void;
+}) {
+  const drag = useDraggable({
+    id: `player:${player.id}`,
+    data: { type: 'player', playerId: player.id },
+  });
+  const { role: _role, ...dragAttributes } = drag.attributes;
+  return (
+    <div
+      ref={drag.setNodeRef}
+      data-player-id={player.id}
+      className={cn(drag.isDragging && 'opacity-50')}
+      {...dragAttributes}
+      {...drag.listeners}
+      onClick={() => onSelect?.(player.id)}
+    >
+      <PlayerCard player={player} isActive={isActive} onEdit={onEdit} />
+    </div>
+  );
 }
 
 type StatusFilter = 'all' | PlayerStatus;
@@ -28,9 +58,7 @@ export function PlayersSidebar({
   onAddPlayer,
   onUpdatePlayer,
   onRemovePlayer,
-  onDragPlayer,
-  selectedPlayerId,
-  onSelectPlayer
+  onSelect,
 }: PlayersSidebarProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
@@ -106,14 +134,14 @@ export function PlayersSidebar({
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-sidebar-border">
+      <div className="px-3 py-2 pr-10 border-b border-sidebar-border">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-semibold tracking-tight">Players</h2>
           <button
             type="button"
             onClick={() => setIsAddingPlayer(true)}
             aria-label="Add player"
-            className="mr-8 flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1"
           >
             <Plus className="w-3.5 h-3.5" />
             Add
@@ -121,7 +149,7 @@ export function PlayersSidebar({
         </div>
 
         {/* Status filters */}
-        <div className="grid grid-cols-3 gap-1">
+        <div className="flex gap-1.5">
           {filterButtons.map(btn => (
             <button
               key={btn.value}
@@ -130,15 +158,15 @@ export function PlayersSidebar({
               aria-label={`Show ${btn.label.toLowerCase()} players`}
               aria-pressed={statusFilter === btn.value}
               className={cn(
-                'min-w-0 flex items-center justify-center gap-1 rounded px-1 py-1.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
+                'flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-1',
                 statusFilter === btn.value
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'
               )}
             >
-              <span className="shrink-0">{btn.icon}</span>
-              <span className="truncate">{btn.label}</span>
-              <span className="opacity-60">
+              {btn.icon}
+              {btn.label}
+              <span className="ml-1 opacity-60">
                 {statusCounts[btn.value as PlayerStatus] ?? players.length}
               </span>
             </button>
@@ -147,29 +175,11 @@ export function PlayersSidebar({
       </div>
 
       {/* Player list */}
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className="flex-1">
         <div className="p-2 space-y-3">
           {filteredPlayers.length === 0 ? (
-            <div className="mx-2 rounded-lg border border-sidebar-border bg-sidebar-accent/30 px-4 py-6 text-center">
-              <Users className="mx-auto mb-2 h-6 w-6 text-sidebar-foreground/60" aria-hidden="true" />
-              <p className="text-sm font-medium">
-                {players.length === 0 ? 'Build your roster' : `No ${statusFilter} players`}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/70">
-                {players.length === 0
-                  ? 'Add a player to start building your lineup and field.'
-                  : 'Choose another status to see the rest of your roster.'}
-              </p>
-              {players.length === 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingPlayer(true)}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-sidebar-primary px-3 py-2 text-xs font-semibold text-sidebar-primary-foreground hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  Add your first player
-                </button>
-              )}
+            <div className="text-center py-6 text-sidebar-foreground/50">
+              <p className="text-xs">No {statusFilter} players</p>
             </div>
           ) : (
             groupOrder.map(groupName => {
@@ -187,28 +197,15 @@ export function PlayersSidebar({
 
                   {/* Players in this group */}
                   <div className="space-y-2">
-                    {groupPlayers.map(player => {
-                      const isActive = isPlayerActive(player.id);
-                      return (
-                        <div
-                          key={player.id}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = 'move';
-                            e.dataTransfer.setData('text/plain', player.id);
-                            onDragPlayer(player.id);
-                          }}
-                        >
-                          <PlayerCard
-                            player={player}
-                            isActive={isActive}
-                            onEdit={() => setEditingPlayer(player)}
-                            isSelected={selectedPlayerId === player.id}
-                            onSelect={onSelectPlayer ? () => onSelectPlayer(player.id) : undefined}
-                          />
-                        </div>
-                      );
-                    })}
+                    {groupPlayers.map(player => (
+                      <DraggablePlayer
+                        key={player.id}
+                        player={player}
+                        isActive={isPlayerActive(player.id)}
+                        onEdit={() => setEditingPlayer(player)}
+                        onSelect={onSelect}
+                      />
+                    ))}
                   </div>
                 </div>
               );
