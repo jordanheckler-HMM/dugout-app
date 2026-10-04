@@ -11,9 +11,16 @@ yellow, and green window buttons again. Windows and Linux show their
 normal minimize, resize, and close buttons. The window can be dragged
 from the title bar and from the Dugout header.
 
-The update prompt is a small card at the bottom-left, beside Settings
-in the sidebar. Appearance, including theme and text size, is saved on
-this device.
+The update prompt is a small download button at the bottom-left, beside
+Settings in the sidebar. Appearance, including theme and text size, is
+saved on this device.
+
+0.1.8 restyles the squad, depth chart, lineup, and diamond in a
+broadcast roster look: a navy and gold gradient, condensed type, a
+selected-player header, and side-by-side lineup, bench, rotation, and
+bullpen tables. Player cards show the profile and game stats Dugout
+stores; missing ratings and totals stay blank. Lineup editing, the DH
+switch, chemistry, the updater, and Settings stay in place.
 
 ## Downloads
 
