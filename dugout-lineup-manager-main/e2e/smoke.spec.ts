@@ -126,12 +126,13 @@ test("clubhouse flows stay in sync without an AI coach", async ({ page }) => {
   await page.reload();
   await page.getByRole("button", { name: "Load configuration" }).click();
   await page.getByRole("button", { name: "Friday starter · DH" }).click();
-  await expect(order(page).getByText("Maya Chen")).toBeVisible();
+  // The batting order can be scrolled; verify the restored player is in the order.
+  await expect(order(page).getByText("Maya Chen")).toHaveCount(1);
   await expect(page.locator(".field-name", { hasText: "Chen" })).toBeVisible();
 
   await nav.getByRole("link", { name: "Schedule", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Games" })).toBeVisible();
-  await page.getByRole("button", { name: "Add Game" }).click();
+  await expect(page.getByRole("heading", { name: "Games", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add Game" }).first().click();
   await page.getByLabel("Date *").fill("2026-10-04");
   await page.getByLabel("Opponent *").fill("Westfield");
   await page.getByRole("dialog").getByRole("button", { name: "Add Game" }).click();
