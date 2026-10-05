@@ -96,4 +96,5 @@ describe("LineupCard", () => {
     expect(screen.getByText(/Noah Patel is pitching/)).toBeTruthy();
     expect(screen.queryByText("Pitcher bats here")).toBeNull();
   });
+
 });

@@ -1,14 +1,11 @@
 #!/bin/bash
+set -euo pipefail
 
-# Clear any previous terminal state
-if [[ "$1" == "" ]]; then
-    echo "❌ Error: You need to provide your Private Key."
-    echo "Usage: ./build_dugout.sh \"YOUR_PRIVATE_KEY_HERE\""
+if [[ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+    echo "TAURI_SIGNING_PRIVATE_KEY must be set in the environment." >&2
     exit 1
 fi
 
-export TAURI_SIGNING_PRIVATE_KEY="$1"
-export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
-
-echo "🚀 Building Dugout with signing keys..."
-npm run build && npx tauri build
+# Tauri runs the frontend build through beforeBuildCommand. Build the sidecar
+# separately before invoking this helper.
+npm run tauri build

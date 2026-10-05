@@ -11,7 +11,7 @@ The backend is local-first by default and persists application state to JSON fil
 - Saved lineup configurations
 - Game schedule CRUD
 - Per-game stat entry and season stat aggregation
-- AI endpoints:
+- Legacy AI endpoints (not used by the Dugout desktop UI):
   - `POST /lyra/analyze`: Ollama-only lineup analysis
   - `POST /lyra/chat/stream`: streaming chat via Ollama/OpenAI/Anthropic
 - AI settings endpoints for provider/model configuration
@@ -21,7 +21,7 @@ The backend is local-first by default and persists application state to JSON fil
 - Python 3.11 (required; current dependency pins are validated on 3.11)
 - `pip`
 
-Optional (for local AI mode):
+Optional (only for the legacy AI endpoints):
 
 - Ollama running at `http://localhost:11434`
 - `lyra-coach` model created from `Modelfile`
@@ -73,14 +73,16 @@ ollama create lyra-coach -f Modelfile
 ollama list
 ```
 
-The backend checks for `lyra-coach:latest`.
+The Dugout desktop workflow does not require Ollama or `lyra-coach:latest`.
 
 ## Environment Variables
 
 - `DUGOUT_DATA_DIR`: Override JSON storage directory (default: `data`, relative
   to the backend process working directory)
-- `DUGOUT_BACKEND_PORT`: Used when running `python main.py` and for startup log
-  port display. `start.sh` and explicit `uvicorn --port` take precedence.
+- `DUGOUT_BACKEND_PORT`: Used when running `python main.py`; `start.sh` and
+  explicit `uvicorn --port` take precedence.
+- `DUGOUT_INSTANCE_ID`: Optional desktop sidecar identity marker returned by
+  `GET /`. The Tauri host uses it to confirm it reached the sidecar it started.
 
 ## API Endpoints
 

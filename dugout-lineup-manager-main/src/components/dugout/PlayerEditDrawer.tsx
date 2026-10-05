@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Player, Position, Handedness, PlayerStatus } from '@/types/player';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -204,6 +204,9 @@ export function PlayerEditDrawer({ player, isOpen, onClose, onSave, onRemove, al
           <SheetTitle className="text-foreground">
             {player ? 'Edit Player' : 'Add Player'}
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            {player ? 'Update this player in your roster.' : 'Add a player to your team roster.'}
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto mt-6 pr-2">

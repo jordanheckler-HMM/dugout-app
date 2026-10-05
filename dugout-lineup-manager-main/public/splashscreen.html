@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Starting Dugout</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        align-items: center;
+        background: #101d1b;
+        color: #f7f5e9;
+        display: flex;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+        padding: 28px;
+        text-align: center;
+      }
+      main { max-width: 320px; }
+      .mark {
+        align-items: center;
+        border: 1px solid #608e7e;
+        border-radius: 18px;
+        color: #d5efae;
+        display: inline-flex;
+        font-size: 26px;
+        font-weight: 800;
+        height: 56px;
+        justify-content: center;
+        letter-spacing: -0.08em;
+        width: 56px;
+      }
+      h1 { font-size: 22px; letter-spacing: -0.03em; margin: 16px 0 7px; }
+      p { color: #b9c9bf; font-size: 13px; line-height: 1.5; margin: 0; }
+      .progress {
+        background: #31443d;
+        border-radius: 999px;
+        height: 4px;
+        margin: 22px auto 0;
+        overflow: hidden;
+        width: 154px;
+      }
+      .progress::after {
+        animation: move 1.6s ease-in-out infinite;
+        background: #d5efae;
+        border-radius: inherit;
+        content: "";
+        display: block;
+        height: 100%;
+        width: 45%;
+      }
+      @keyframes move {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .progress::after { animation: none; width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main role="status" aria-live="polite">
+      <div class="mark" aria-hidden="true">D</div>
+      <h1>Starting Dugout</h1>
+      <p>Opening your local data service and getting the lineup ready.</p>
+      <div class="progress" aria-hidden="true"></div>
+    </main>
+  </body>
+</html>

@@ -6,7 +6,7 @@ const Index = () => {
     <>
       <Helmet>
         <title>Dugout - Baseball Coaching Workspace</title>
-        <meta name="description" content="A local desk for building lineups, depth charts, and defensive alignments." />
+        <meta name="description" content="A focused baseball coaching workspace for managing your roster, building lineups, and setting defensive positions." />
       </Helmet>
       <DugoutLayout />
     </>

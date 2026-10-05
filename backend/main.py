@@ -17,6 +17,8 @@ from urllib.parse import urlparse
 import httpx
 import logging
 import os
+import threading
+import time
 import uuid
 from datetime import datetime
 
@@ -157,6 +159,44 @@ def get_backend_port() -> int:
         return 8100
 
 
+def host_process_alive(pid: int) -> bool:
+    """Check the Tauri host, not PyInstaller's temporary parent process."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
+        kernel32.OpenProcess.restype = ctypes.c_void_p
+        kernel32.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+        kernel32.WaitForSingleObject.restype = ctypes.c_ulong
+        kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
+        kernel32.CloseHandle.restype = ctypes.c_int
+        handle = kernel32.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE
+        if not handle:
+            return False
+        try:
+            return kernel32.WaitForSingleObject(handle, 0) == 0x00000102  # WAIT_TIMEOUT
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def watch_host_process(pid: int) -> None:
+    """Stop the one-file sidecar child if the desktop host exits or crashes."""
+    while host_process_alive(pid):
+        time.sleep(0.5)
+    logger.warning("Dugout desktop host exited; stopping local backend")
+    os._exit(0)
+
+
 def validate_ollama_url(url: str) -> str:
     """
     Validate that an Ollama URL points to localhost only.
@@ -186,6 +226,7 @@ def root():
         "status": "ok",
         "message": "Dugout Baseball Coaching API",
         "version": "1.0.0",
+        "instance_id": os.getenv("DUGOUT_INSTANCE_ID", ""),
     }
 
 
@@ -909,7 +950,7 @@ async def startup_event():
     print(f"API running at: http://localhost:{port}")
     print(f"API docs at: http://localhost:{port}/docs")
     print(f"Data directory: {storage.data_dir.absolute()}")
-    
+
     # Check Ollama connection
     if lyra.check_connection():
         models = lyra.list_models()
@@ -922,7 +963,7 @@ async def startup_event():
     else:
         print("✗ Ollama not connected - AI features unavailable")
         print("  Start Ollama with: ollama serve")
-    
+
     print("=" * 60)
 
 
@@ -948,4 +989,13 @@ def _relax_stdio_encoding() -> None:
 if __name__ == "__main__":
     _relax_stdio_encoding()
     import uvicorn
+    host_pid = os.getenv("DUGOUT_HOST_PID")
+    if host_pid:
+        try:
+            pid = int(host_pid)
+        except ValueError as error:
+            raise SystemExit("Invalid DUGOUT_HOST_PID") from error
+        if not host_process_alive(pid):
+            raise SystemExit("Dugout desktop host is not running")
+        threading.Thread(target=watch_host_process, args=(pid,), daemon=True).start()
     uvicorn.run(app, host="127.0.0.1", port=get_backend_port())

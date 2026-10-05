@@ -44,15 +44,15 @@ describe("mapBackendPlayerToFrontend", () => {
 
 describe("mapFrontendPlayerToBackend", () => {
   it("omits undefined player number but keeps required backend fields", () => {
-    const playerWithoutNumber = {
+    const playerWithoutNumber: Player = {
       id: "player-2",
       name: "No Number",
-      primaryPosition: "CF" as const,
-      secondaryPositions: ["LF"] as const,
-      positions: ["CF", "LF"] as const,
-      bats: "L" as const,
-      throws: "R" as const,
-      status: "active" as const,
+      primaryPosition: "CF",
+      secondaryPositions: ["LF"],
+      positions: ["CF", "LF"],
+      bats: "L",
+      throws: "R",
+      status: "active",
       stats: {},
     };
 
